@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_16.html -->
+<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_17.html -->
 <html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -663,8 +663,33 @@ function showHist(code,branch){
       html+='</div>';
     });
   }
+  // Add manual supplier change section at bottom
+  if(branch){
+    html+=`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bdr)">
+      <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">เปลี่ยนบริษัทเอง</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="manualSupInput" placeholder="พิมพ์ชื่อบริษัท..." 
+          style="flex:1;border:1.5px solid var(--bdr);border-radius:7px;padding:7px 10px;font-family:Sarabun,sans-serif;font-size:13px;outline:none"
+          onfocus="this.style.borderColor='var(--pri)'" onblur="this.style.borderColor='var(--bdr)'"
+          onkeydown="if(event.key==='Enter')confirmManualSup()">
+        <button class="btnSm btnChg" style="padding:7px 14px;font-size:13px" onclick="confirmManualSup()">ยืนยัน</button>
+      </div>
+    </div>`;
+  }
   document.getElementById('histBody').innerHTML=html;
   document.getElementById('histModal').classList.add('open');
+  if(branch) setTimeout(()=>{
+    const inp=document.getElementById('manualSupInput');
+    if(inp && curSup==='ไม่ทราบบริษัท') inp.focus();
+  },100);
+}
+
+function confirmManualSup(){
+  const inp=document.getElementById('manualSupInput');
+  if(!inp)return;
+  const val=inp.value.trim();
+  if(!val){inp.style.borderColor='var(--acc)';return;}
+  changeSup(val);
 }
 
 function changeSup(newSup){
