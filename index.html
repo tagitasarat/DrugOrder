@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_17.html -->
+<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_22.html -->
 <html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -43,8 +43,8 @@ header{background:var(--pri);color:#fff;padding:11px 18px;display:flex;align-ite
 .wrap{max-width:1280px;margin:0 auto;padding:14px}
 .layout{display:grid;grid-template-columns:370px 1fr;gap:16px;align-items:start}
 @media(max-width:860px){.layout{grid-template-columns:1fr}}
-.card{background:#fff;border-radius:var(--rad);box-shadow:0 2px 10px rgba(26,86,160,.08);overflow:hidden}
-.cHead{background:var(--pri);color:#fff;padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.card{background:#fff;border-radius:var(--rad);box-shadow:0 2px 10px rgba(26,86,160,.08)}
+.cHead{background:var(--pri);color:#fff;padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;border-radius:var(--rad) var(--rad) 0 0}
 .cBody{padding:13px}
 .row{margin-bottom:10px}
 .lbl{display:block;font-size:11px;font-weight:600;color:var(--mut);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
@@ -54,7 +54,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--pri)}
 .sWrap{position:relative}
 .sWrap input{padding-left:30px}
 .sIco{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mut);font-size:13px;pointer-events:none}
-.drop{position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1.5px solid var(--bdr);border-radius:8px;max-height:240px;overflow-y:auto;z-index:200;box-shadow:0 6px 18px rgba(0,0,0,.12);display:none}
+.drop{position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1.5px solid var(--bdr);border-radius:8px;max-height:260px;overflow-y:auto;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.15);display:none}
 .drop.open{display:block}
 .dItem{padding:8px 11px;cursor:pointer;border-bottom:1px solid #f0f4f8;font-size:13px}
 .dItem:hover,.dActive{background:var(--pli)}
@@ -306,7 +306,29 @@ function enterApp(){
   document.getElementById('logBtn').style.display=isOwner?'inline-flex':'none';
   document.getElementById('hBranch').textContent=isOwner?'👑 เจ้าของ':curBranch;
   if(isOwner){viewBranch=BRANCHES[0];renderOTabs();}
-  updateLabels();renderOrder();
+  updateLabels();
+  // Load pending items from Sheets
+  const branchesToLoad=isOwner?BRANCHES:[curBranch];
+  renderOrder();
+  toast('⏳ กำลังโหลดรายการ...');
+  Promise.all(branchesToLoad.map(b=>
+    loadFromSheet(b).then(res=>{
+      if(res.items&&res.items.length){
+        res.items.forEach(it=>{
+          const exists=orders[b].find(o=>o.rowId===it.rowId);
+          if(!exists) orders[b].push({
+            code:it.code,name:it.name,unit:it.unit,
+            supplier:it.supplier,note:it.note,branch:it.branch||b,
+            rowId:it.rowId,sups:[{s:it.supplier,h:[]}]
+          });
+        });
+      }
+    }).catch(()=>{})
+  )).then(()=>{
+    if(isOwner)renderOTabs();
+    renderOrder();
+    toast('✓ โหลดรายการแล้ว');
+  });
 }
 
 // ── OWNER TABS ──
@@ -452,11 +474,15 @@ function addFromDB(){
   const b=activeBranch();
   const dup=orders[b].find(i=>i.code===selDrug.code&&!i.custom);
   if(dup){toast('มีรายการนี้อยู่แล้ว');return;}
-  orders[b].push({code:selDrug.code,name:selDrug.n,unit:selDrug.u,supplier:selDrug.selSup,note,branch:b,sups:selDrug.sups});
+  const rowId=Date.now()+'-'+Math.random().toString(36).slice(2,7);
+  const item={code:selDrug.code,name:selDrug.n,unit:selDrug.u,
+    supplier:selDrug.selSup||selDrug.s,note,branch:b,sups:selDrug.sups,rowId};
+  orders[b].push(item);
   toast('เพิ่ม '+selDrug.n);
   resetForm();
   if(isOwner)renderOTabs();
   renderOrder();
+  sheetAdd(b,item).then(()=>toast('☁️ บันทึก Sheets แล้ว')).catch(()=>toast('⚠️ Sheets ไม่สำเร็จ'));
 }
 document.getElementById('noteInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addFromDB();}});
 
@@ -467,11 +493,14 @@ function addCustom(){
   const unit=document.getElementById('cUnit').value.trim()||'-';
   const note=document.getElementById('cNote').value.trim();
   const b=activeBranch();
-  orders[b].push({code:'C'+Date.now(),name,unit,supplier:sup,note,custom:true,branch:b,sups:[{s:sup,h:[]}]});
+  const rowId=Date.now()+'-'+Math.random().toString(36).slice(2,7);
+  const item={code:'C'+rowId,name,unit,supplier:sup,note,custom:true,branch:b,sups:[{s:sup,h:[]}],rowId};
+  orders[b].push(item);
   ['cName','cSup','cUnit','cNote'].forEach(id=>document.getElementById(id).value='');
   toast('เพิ่ม '+name);
   if(isOwner)renderOTabs();
   renderOrder();
+  sheetAdd(b,item).then(()=>toast('☁️ บันทึก Sheets แล้ว')).catch(()=>toast('⚠️ Sheets ไม่สำเร็จ'));
 }
 function resetForm(){
   selDrug=null;
@@ -479,12 +508,15 @@ function resetForm(){
   document.getElementById('noteWrap').style.display='none';
   document.getElementById('addWrap').style.display='none';
   si.value='';drop.classList.remove('open');dropItems=[];
+  setTimeout(()=>si.focus(),50);
 }
 
 // ── REMOVE / CLEAR ──
 function removeItem(b,code){
+  const item=orders[b].find(i=>i.code===code);
   orders[b]=orders[b].filter(i=>i.code!==code);
   if(isOwner)renderOTabs();renderOrder();
+  if(item&&item.rowId) sheetDelete(b,item.rowId);
 }
 function clearBranch(){
   const b=activeBranch();
@@ -498,30 +530,51 @@ function clearBranch(){
 function markOrdered(b,code){
   const item=orders[b].find(i=>i.code===code);if(!item)return;
   item.ordered=true;item.orderedAt=new Date().toLocaleDateString('th-TH');
-  log[b].push({...item});
   if(isOwner)renderOTabs();renderOrder();
   toast('✅ สั่งแล้ว: '+item.name);
-  saveToSheets(b,[item]);
+  if(item.rowId) sheetOrdered(b,item.rowId);
 }
 
-function saveToSheets(branch,items){
-  const orderDate=document.getElementById('orderDate').value;
-  const payload={branch,orderDate,items:items.map(i=>({
-    supplier:i.supplier,code:i.code||'-',name:i.name,unit:i.unit,note:i.note||''
-  }))};
-  fetch('https://script.google.com/macros/s/AKfycbxlM3nhiUbFB9jO8zDLdBglpxemZl67TX80RxgzOQivSzSHIJz9bi1ukwIFpakrahHE/exec',{
+function api(payload){
+  return fetch('https://script.google.com/macros/s/AKfycbxlM3nhiUbFB9jO8zDLdBglpxemZl67TX80RxgzOQivSzSHIJz9bi1ukwIFpakrahHE/exec',{
     method:'POST',mode:'no-cors',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(payload)
-  }).then(()=>toast('☁️ บันทึกลง Google Sheets แล้ว'))
-    .catch(()=>toast('⚠️ บันทึก Sheets ไม่สำเร็จ'));
+  });
+}
+
+function sheetAdd(branch,item){
+  return api({action:'add',branch,
+    rowId:item.rowId,orderDate:document.getElementById('orderDate').value,
+    supplier:item.supplier,code:item.code||'-',name:item.name,unit:item.unit,note:item.note||''
+  });
+}
+
+function sheetDelete(branch,rowId){
+  return api({action:'delete',branch,rowId});
+}
+
+function sheetOrdered(branch,rowId){
+  return api({action:'ordered',branch,rowId,
+    orderedAt:new Date().toLocaleString('th-TH')
+  });
+}
+
+function loadFromSheet(branch){
+  return fetch('https://script.google.com/macros/s/AKfycbxlM3nhiUbFB9jO8zDLdBglpxemZl67TX80RxgzOQivSzSHIJz9bi1ukwIFpakrahHE/exec',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'load',branch})
+  }).then(r=>r.json()).catch(()=>({items:[]}));
 }
 function markAllOrdered(b,sup){
   const its=orders[b].filter(i=>i.supplier===sup&&!i.ordered);
-  its.forEach(i=>{i.ordered=true;i.orderedAt=new Date().toLocaleDateString('th-TH');log[b].push({...i});});
+  its.forEach(i=>{
+    i.ordered=true;i.orderedAt=new Date().toLocaleDateString('th-TH');
+    if(i.rowId) sheetOrdered(b,i.rowId);
+  });
   if(isOwner)renderOTabs();renderOrder();
   toast('✅ สั่งแล้ว '+its.length+' รายการ');
-  saveToSheets(b,its);
 }
 
 // ── COPY / EXPORT ──
@@ -697,12 +750,20 @@ function changeSup(newSup){
   const{code,branch}=histCtx;
   const item=(orders[branch]||[]).find(i=>i.code===code);
   if(!item)return;
-  const oldSup=item.supplier;
   item.supplier=newSup;
+  // Update sups list for future history popup
+  if(item.sups&&!item.sups.find(s=>s.s===newSup)){
+    item.sups.push({s:newSup,h:[]});
+  }
   closeModal('histModal');
   if(isOwner)renderOTabs();
   renderOrder();
   toast('เปลี่ยนเป็น '+newSup);
+  // Update Sheet: delete old row then re-add with new supplier
+  if(item.rowId){
+    sheetDelete(branch,item.rowId).then(()=>sheetAdd(branch,item))
+      .catch(()=>toast('⚠️ อัปเดต Sheets ไม่สำเร็จ'));
+  }
 }
 
 // ── PRINT ──
