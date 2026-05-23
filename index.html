@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_22.html -->
+<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_24.html -->
 <html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -317,17 +317,20 @@ function enterApp(){
         res.items.forEach(it=>{
           const exists=orders[b].find(o=>o.rowId===it.rowId);
           if(!exists) orders[b].push({
-            code:it.code,name:it.name,unit:it.unit,
-            supplier:it.supplier,note:it.note,branch:it.branch||b,
-            rowId:it.rowId,sups:[{s:it.supplier,h:[]}]
+            code:String(it.code||''),name:String(it.name||''),
+            unit:String(it.unit||''),supplier:String(it.supplier||'ไม่ทราบบริษัท'),
+            note:String(it.note||''),branch:it.branch||b,
+            rowId:String(it.rowId),custom:!String(it.code||'').startsWith('P-'),
+            sups:[{s:String(it.supplier||''),h:[]}]
           });
         });
       }
-    }).catch(()=>{})
+    }).catch(err=>console.warn('load failed for '+b, err))
   )).then(()=>{
     if(isOwner)renderOTabs();
     renderOrder();
-    toast('✓ โหลดรายการแล้ว');
+    const total=branchesToLoad.reduce((s,b)=>s+(orders[b]||[]).length,0);
+    toast(total>0?'✓ โหลด '+total+' รายการแล้ว':'✓ ไม่มีรายการรอสั่ง');
   });
 }
 
@@ -561,11 +564,8 @@ function sheetOrdered(branch,rowId){
 }
 
 function loadFromSheet(branch){
-  return fetch('https://script.google.com/macros/s/AKfycbxlM3nhiUbFB9jO8zDLdBglpxemZl67TX80RxgzOQivSzSHIJz9bi1ukwIFpakrahHE/exec',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'load',branch})
-  }).then(r=>r.json()).catch(()=>({items:[]}));
+  const url='https://script.google.com/macros/s/AKfycbxlM3nhiUbFB9jO8zDLdBglpxemZl67TX80RxgzOQivSzSHIJz9bi1ukwIFpakrahHE/exec?action=load&branch='+encodeURIComponent(branch);
+  return fetch(url).then(r=>r.json()).catch(()=>({items:[]}));
 }
 function markAllOrdered(b,sup){
   const its=orders[b].filter(i=>i.supplier===sup&&!i.ordered);
