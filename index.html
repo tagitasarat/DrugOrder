@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_28.html -->
+<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_29.html -->
 <html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -152,7 +152,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
   </div>
 </div>
 
-<div id="pinModal">
+<div id="pinModal" class="">
   <div class="pinBox">
     <div class="pinTitle">🔐 รหัสเจ้าของ</div>
     <div class="pinDots">
@@ -342,8 +342,9 @@ function enterApp(){
   // Load recently ordered items (last 7 days) for duplicate check
   branchesToLoad.forEach(b=>{
     loadRecentOrdered(b).then(items=>{
+      console.log('[loadRecent] branch='+b+' items='+JSON.stringify(items).slice(0,200));
       if(items.length) recentOrdered[b]=items;
-    }).catch(()=>{});
+    }).catch(e=>console.log('[loadRecent] error',e));
   });
 
   Promise.all(branchesToLoad.map(b=>
@@ -540,15 +541,15 @@ function parseThaiDate(str){
 function checkRecentOrder(code, branch){
   const now = new Date();
   const sevenDaysAgo = new Date(now - 7*24*60*60*1000);
-  // Check recentOrdered cache (loaded from Sheets)
   const cache = (recentOrdered[branch]||[]);
+  console.log('[checkRecent] code='+code+' branch='+branch+' cache size='+cache.length);
   const fromCache = cache.find(item=>{
     if(item.code !== code) return false;
     const d = parseThaiDate(item.orderedAt);
+    console.log('[checkRecent] checking item code='+item.code+' orderedAt='+item.orderedAt+' parsed='+d+' ok='+(d&&d>=sevenDaysAgo));
     return d && d >= sevenDaysAgo;
   });
   if(fromCache) return fromCache;
-  // Also check in-memory log (items ordered this session)
   const branchLog = log[branch]||[];
   return branchLog.find(item=>{
     if(item.code !== code) return false;
