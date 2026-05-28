@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_30.html -->
+<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_31.html -->
 <html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -253,7 +253,8 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
             <div class="totInfo">รวมสาขานี้</div>
             <div class="totNum"><span id="totItems">0</span> รายการ / <span id="totSup">0</span> บริษัท</div>
           </div>
-          <div style="display:flex;gap:7px">
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn btnOut" onclick="copyAll()">📋 Copy ทั้งหมด</button>
             <button class="btn btnOut" onclick="clearBranch()">🗑️ ล้าง</button>
             <button class="btn btnSuc" onclick="openPrint()">🖨️ พิมพ์</button>
             <button class="btn btnOut" id="logBtn" style="display:none" onclick="openLog()">📋 ประวัติ</button>
@@ -349,23 +350,22 @@ function enterApp(){
 
   Promise.all(branchesToLoad.map(b=>
     loadFromSheet(b).then(res=>{
+      // Clear existing orders for this branch before loading from Sheets
+      // to prevent duplicates on page reload
+      orders[b] = [];
       if(res.items&&res.items.length){
         res.items.forEach(it=>{
-          const exists=orders[b].find(o=>o.rowId===it.rowId);
-          if(!exists){
-            const code=String(it.code||'');
-            const catD=CAT[code];
-            // Merge with catalog data to get full supplier list + history
-            const sups=catD?catD.sups:[{s:String(it.supplier||'ไม่ทราบบริษัท'),h:[]}];
-            orders[b].push({
-              code,name:String(it.name||''),
-              unit:String(it.unit||''),supplier:String(it.supplier||'ไม่ทราบบริษัท'),
-              note:String(it.note||''),branch:it.branch||b,
-              rowId:String(it.rowId),custom:!code.startsWith('P-'),
-              qty:it.qty!=null?Number(it.qty):null,
-              sups
-            });
-          }
+          const code=String(it.code||'');
+          const catD=CAT[code];
+          const sups=catD?catD.sups:[{s:String(it.supplier||'ไม่ทราบบริษัท'),h:[]}];
+          orders[b].push({
+            code,name:String(it.name||''),
+            unit:String(it.unit||''),supplier:String(it.supplier||'ไม่ทราบบริษัท'),
+            note:String(it.note||''),branch:it.branch||b,
+            rowId:String(it.rowId),custom:!code.startsWith('P-'),
+            qty:it.qty!=null?Number(it.qty):null,
+            sups
+          });
         });
       }
     }).catch(err=>console.warn('load failed for '+b, err))
@@ -746,6 +746,22 @@ function exportSupplier(b,sup){
 // ── RENDER ORDER ──
 
 
+function copyAll(){
+  const vb=isOwner?viewBranch:curBranch;
+  const items=(orders[vb]||[]).filter(i=>!i.ordered);
+  if(!items.length){toast('ไม่มีรายการ');return;}
+  const date=document.getElementById('orderDate').value;
+  const lines=['สาขา: '+vb,'วันที่: '+date,'---'];
+  items.forEach((it,i)=>lines.push(
+    (i+1)+'. '+it.name+
+    (it.code&&!it.custom?' ('+it.code+')':'')+
+    ' ['+it.unit+']'+
+    (it.qty?' จำนวน '+it.qty:'')+
+    (it.note?' — '+it.note:'')
+  ));
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(()=>toast('📋 Copy ทั้งหมด '+items.length+' รายการแล้ว'));
+}
 function handleCopy(el){copySupplier(el.getAttribute('data-b'),el.getAttribute('data-s'));}
 
 let qtyTimer=null;
