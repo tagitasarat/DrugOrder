@@ -459,6 +459,16 @@ si.addEventListener('input',()=>{
   dropIdx=-1;
   const q=si.value.trim().toLowerCase();
   if(!q){drop.classList.remove('open');dropItems=[];return;}
+  // Barcode detection: if query is all digits (8+) and matches a barcode, auto-pick
+  const raw=si.value.trim();
+  if(/^[0-9]{8,}$/.test(raw) && BC.bc && BC.bc[raw]){
+    const code=BC.bc[raw];
+    if(CAT[code]){
+      pickDrug(code);
+      toast('🔍 พบจาก barcode: '+CAT[code].n);
+      return;
+    }
+  }
   // Also search generic names
   const genMatches=new Set();
   if(BC.gen){
