@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_31.html -->
-<html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
+<html lang="th">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ระบบสั่งยา – พระจันทร์เภสัช</title>
-<link href="./index_files/css2" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f0f4f8;--w:#fff;--pri:#1a56a0;--pli:#e8f0fb;--acc:#e63946;--grn:#2d9b4e;--bdr:#d1dce8;--txt:#1a2433;--mut:#6b7f96;--rad:12px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -96,6 +96,18 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 .iNote{font-size:10px;color:#856404;background:#fff3cd;border-radius:4px;padding:1px 5px;margin-top:2px;display:inline-block}
 .iBadge{font-size:9px;background:var(--pli);color:var(--pri);padding:1px 5px;border-radius:4px;font-weight:600}
 .iHint{font-size:9px;color:#bbb;margin-top:1px}
+.copyIcon{font-size:11px;cursor:pointer;opacity:.5;margin-left:3px;display:inline-block}
+.copyIcon:hover{opacity:1}
+.statusTabs{display:flex;gap:4px;margin-bottom:10px}
+.stTab{flex:1;padding:7px 6px;border-radius:8px;border:1.5px solid var(--bdr);background:#fff;color:var(--mut);font-family:'Sarabun',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s}
+.stTab.active{border-color:var(--pri);background:var(--pli);color:var(--pri)}
+.stTab .stcnt{display:inline-block;background:var(--mut);color:#fff;border-radius:20px;padding:0 6px;font-size:10px;margin-left:3px}
+.stTab.active .stcnt{background:var(--pri)}
+.waitBadge{font-size:10px;font-weight:600;padding:1px 7px;border-radius:4px;white-space:nowrap}
+.waitBadge.ws{background:#e6f7eb;color:#2d9b4e}
+.waitBadge.ww{background:#fff3cd;color:#856404}
+.btnRecv{background:#1a56a0;color:#fff;border:none;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap}
+.btnRecvAll{background:#1a56a0;color:#fff;border:none}
 .qtyInput{width:64px;border:1.5px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;font-family:'Sarabun',sans-serif;outline:none}
 .qtyInput:focus{border-color:var(--pri)}
 .qtyBadge{font-size:11px;font-weight:700;color:var(--pri);background:var(--pli);padding:2px 8px;border-radius:5px;white-space:nowrap}
@@ -147,7 +159,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
     <div class="bsLogo">🏥</div>
     <div class="bsTitle">พระจันทร์เภสัช</div>
     <div class="bsSub">เลือกสาขาเพื่อเริ่มใช้งาน</div>
-    <div class="bsList" id="bsList"><button class="bsBtn" onclick="pickBranch(&#39;สาขา 1&#39;)"><span>🏪</span>สาขา 1</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 2&#39;)"><span>🏪</span>สาขา 2</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 3&#39;)"><span>🏪</span>สาขา 3</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 4&#39;)"><span>🏪</span>สาขา 4</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 5&#39;)"><span>🏪</span>สาขา 5</button></div>
+    <div class="bsList" id="bsList"></div>
     <button class="ownerLink" onclick="openPin()">🔐 เจ้าของ / ดูทุกสาขา</button>
   </div>
 </div>
@@ -160,11 +172,11 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
       <div class="pinDot" id="pd2"></div><div class="pinDot" id="pd3"></div>
     </div>
     <div class="pinPad">
-      <button class="pinKey" onclick="pk(&#39;1&#39;)">1</button><button class="pinKey" onclick="pk(&#39;2&#39;)">2</button><button class="pinKey" onclick="pk(&#39;3&#39;)">3</button>
-      <button class="pinKey" onclick="pk(&#39;4&#39;)">4</button><button class="pinKey" onclick="pk(&#39;5&#39;)">5</button><button class="pinKey" onclick="pk(&#39;6&#39;)">6</button>
-      <button class="pinKey" onclick="pk(&#39;7&#39;)">7</button><button class="pinKey" onclick="pk(&#39;8&#39;)">8</button><button class="pinKey" onclick="pk(&#39;9&#39;)">9</button>
+      <button class="pinKey" onclick="pk('1')">1</button><button class="pinKey" onclick="pk('2')">2</button><button class="pinKey" onclick="pk('3')">3</button>
+      <button class="pinKey" onclick="pk('4')">4</button><button class="pinKey" onclick="pk('5')">5</button><button class="pinKey" onclick="pk('6')">6</button>
+      <button class="pinKey" onclick="pk('7')">7</button><button class="pinKey" onclick="pk('8')">8</button><button class="pinKey" onclick="pk('9')">9</button>
       <button class="pinKey" style="font-size:11px;color:var(--mut)" onclick="closePin()">ยกเลิก</button>
-      <button class="pinKey" onclick="pk(&#39;0&#39;)">0</button>
+      <button class="pinKey" onclick="pk('0')">0</button>
       <button class="pinKey" style="color:var(--acc)" onclick="pkDel()">⌫</button>
     </div>
     <div class="pinErr" id="pinErr"></div>
@@ -198,19 +210,20 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
                 <div class="drop" id="drop"></div>
               </div>
               <div style="display:flex;gap:6px;margin-top:6px">
-                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan(&#39;camera&#39;)">📷 Scan กล้อง</button>
-                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan(&#39;manual&#39;)">🔢 พิมพ์ Barcode</button>
+                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan('camera')">📷 Scan กล้อง</button>
+                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan('manual')">🔢 พิมพ์ Barcode</button>
               </div>
             </div>
 
             <!-- SCANNER AREA -->
             <div id="scanArea" style="display:none;margin-bottom:10px">
               <div style="background:#000;border-radius:8px;overflow:hidden;position:relative">
-                <video id="scanVideo" style="width:100%;max-height:200px;display:block" playsinline=""></video>
+                <video id="scanVideo" style="width:100%;max-height:200px;display:block" playsinline></video>
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;height:2px;background:rgba(255,80,80,.8);box-shadow:0 0 8px red"></div>
               </div>
               <div style="display:flex;gap:6px;margin-top:6px">
-                <input type="text" id="bcInput" placeholder="หรือพิมพ์ barcode แล้วกด Enter..." style="flex:1;font-size:13px" onkeydown="if(event.key===&#39;Enter&#39;)handleBcInput()">
+                <input type="text" id="bcInput" placeholder="หรือพิมพ์ barcode แล้วกด Enter..." style="flex:1;font-size:13px"
+                  onkeydown="if(event.key==='Enter')handleBcInput()">
                 <button class="btn btnOut btn-sm" onclick="closeScan()">✕ ปิด</button>
               </div>
             </div>
@@ -246,7 +259,13 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
       <div class="sticky">
         <div class="card">
           <div class="cHead">🛒 รายการสั่งยา — <span id="orderBranch"></span><span class="badge" id="totBadge">0</span></div>
-          <div class="cBody" id="orderBody"></div>
+          <div class="cBody">
+            <div class="statusTabs" id="statusTabs">
+              <button class="stTab active" data-st="รอสั่ง" onclick="setStatusFilter('รอสั่ง')">📝 รอสั่ง<span class="stcnt" id="cntWait">0</span></button>
+              <button class="stTab" data-st="รอของ" onclick="setStatusFilter('รอของ')">📦 รอของ<span class="stcnt" id="cntOrdered">0</span></button>
+            </div>
+            <div id="orderBody"></div>
+          </div>
         </div>
         <div class="oFoot noPrint">
           <div>
@@ -268,7 +287,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 <!-- HISTORY / CHANGE SUP MODAL -->
 <div class="mOver noPrint" id="histModal">
   <div class="mBox">
-    <div class="mHead"><span class="mTitle" id="histTitle">📦 ประวัติรับยา</span><button class="mClose" onclick="closeModal(&#39;histModal&#39;)">✕</button></div>
+    <div class="mHead"><span class="mTitle" id="histTitle">📦 ประวัติรับยา</span><button class="mClose" onclick="closeModal('histModal')">✕</button></div>
     <div class="mBody" id="histBody"></div>
   </div>
 </div>
@@ -280,7 +299,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
       <span class="mTitle">📄 สรุปใบสั่งยา</span>
       <div style="display:flex;gap:7px;align-items:center">
         <button class="btnSm btnCopy" onclick="window.print()">🖨️ พิมพ์</button>
-        <button class="mClose" onclick="closeModal(&#39;printModal&#39;)">✕</button>
+        <button class="mClose" onclick="closeModal('printModal')">✕</button>
       </div>
     </div>
     <div class="mBody" id="printBody"></div>
@@ -290,7 +309,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 <!-- LOG MODAL -->
 <div class="mOver noPrint" id="logModal">
   <div class="mBox" style="max-width:720px">
-    <div class="mHead"><span class="mTitle">✅ ประวัติสั่งซื้อ</span><button class="mClose" onclick="closeModal(&#39;logModal&#39;)">✕</button></div>
+    <div class="mHead"><span class="mTitle">✅ ประวัติสั่งซื้อ</span><button class="mClose" onclick="closeModal('logModal')">✕</button></div>
     <div class="mBody" id="logBody"></div>
   </div>
 </div>
@@ -310,6 +329,9 @@ BRANCHES.forEach(b=>{orders[b]=[];log[b]=[];});
 let selDrug=null, pinBuf='';
 let dropItems=[], dropIdx=-1;
 let histCtx=null; // {branch, code} for change-supplier context
+let statusFilter='รอสั่ง'; // current status tab
+const REORDER_DAYS=3; // days before ตามของ allowed
+function setStatusFilter(s){statusFilter=s;document.querySelectorAll('.stTab').forEach(t=>t.classList.toggle('active',t.getAttribute('data-st')===s));renderOrder();}
 
 document.getElementById('orderDate').value=new Date().toISOString().split('T')[0];
 renderBS();
@@ -364,6 +386,8 @@ function enterApp(){
             note:String(it.note||''),branch:it.branch||b,
             rowId:String(it.rowId),custom:!code.startsWith('P-'),
             qty:it.qty!=null?Number(it.qty):null,
+            status:it.status||'รอสั่ง',
+            orderedAt:it.orderedAt||null,
             sups
           });
         });
@@ -380,7 +404,7 @@ function enterApp(){
 // ── OWNER TABS ──
 function renderOTabs(){
   document.getElementById('oTabsWrap').innerHTML=BRANCHES.map(b=>{
-    const n=orders[b].filter(i=>!i.ordered).length;
+    const n=orders[b].filter(i=>(i.status||'รอสั่ง')==='รอสั่ง').length;
     return `<button class="oTab ${b===viewBranch?'active':''}" onclick="switchView('${b}')">
       ${b}<span class="cnt ${n===0?'z':''}">${n}</span></button>`;
   }).join('');
@@ -559,52 +583,66 @@ function checkRecentOrder(code, branch){
   });
 }
 
-function showRecentWarning(drug, note, branch, recentItem){
-  // Show modal warning that this drug was ordered recently
-  const modal = document.getElementById('histModal');
-  document.getElementById('histTitle').textContent = '⚠️ สั่งไปแล้วในช่วง 7 วันที่ผ่านมา';
-  document.getElementById('histBody').innerHTML = `
-    <div class="warnBox">
-      <div class="warnTitle">⚠️ ${esc(drug.n)}</div>
-      <div style="font-size:12px;color:#856404;margin-bottom:8px">
-        ${esc(branch)} สั่งยานี้ไปแล้วเมื่อ <b>${esc(recentItem.orderedAt||'')}</b>
-        ${recentItem.qty ? ' จำนวน <b>'+recentItem.qty+'</b> '+esc(recentItem.unit) : ''}
-      </div>
-      <div style="font-size:12px;color:var(--mut)">ต้องการเพิ่มเข้ารายการสั่งอีกครั้งหรือไม่?</div>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:4px">
-      <button class="btn btnOut" style="flex:1" onclick="closeModal('histModal')">ยกเลิก</button>
-      <button class="btn btnPri" style="flex:1" onclick="forceAdd('${esc(drug.code)}','${esc(note)}','${esc(branch)}')">เพิ่มเข้ารายการ</button>
-    </div>`;
-  modal.classList.add('open');
+function showDupWarning(drug, note, branch, existing){
+  const status=existing.status||'รอสั่ง';
+  let canReorder=false;
+  let daysSince=0;
+  if(status==='รอของ' && existing.orderedAt){
+    const d=parseThaiDate(existing.orderedAt);
+    if(d){
+      daysSince=Math.floor((new Date()-d)/(24*60*60*1000));
+      canReorder=daysSince>=REORDER_DAYS;
+    }
+  }
+  document.getElementById('histTitle').textContent='⚠️ ยานี้มีในรายการอยู่แล้ว';
+  let body=`<div class="warnBox">
+    <div class="warnTitle">⚠️ ${esc(drug.n)}</div>`;
+  if(status==='รอสั่ง'){
+    body+=`<div style="font-size:12px;color:#856404">${esc(branch)} มียานี้อยู่ในรายการ <b>รอสั่ง</b> แล้ว ไม่ต้องคีย์ซ้ำ</div>`;
+  } else {
+    body+=`<div style="font-size:12px;color:#856404;margin-bottom:6px">${esc(branch)} สั่งยานี้ไปแล้ว <b>${daysSince} วันก่อน</b> (${esc(existing.orderedAt||'')}) สถานะ <b>รอของ</b></div>`;
+    if(canReorder){
+      body+=`<div style="font-size:12px;color:#856404">ของยังไม่มาเกิน ${REORDER_DAYS} วัน — กดตามของเพื่อให้เจ้าของสั่งซ้ำได้</div>`;
+    } else {
+      body+=`<div style="font-size:11px;color:var(--mut)">⏳ ตามของได้หลังสั่งไปแล้ว ${REORDER_DAYS} วัน (อีก ${REORDER_DAYS-daysSince} วัน)</div>`;
+    }
+  }
+  body+='</div>';
+  body+=`<div style="display:flex;gap:8px;margin-top:4px">
+    <button class="btn btnOut" style="flex:1" onclick="closeModal('histModal')">ปิด</button>`;
+  if(status==='รอของ' && canReorder){
+    body+=`<button class="btn btnWarn" style="flex:1" onclick="doReorder('${esc(existing.code)}','${esc(branch)}')">⏰ ตามของ / สั่งซ้ำ</button>`;
+  }
+  body+='</div>';
+  document.getElementById('histBody').innerHTML=body;
+  document.getElementById('histModal').classList.add('open');
 }
 
-function forceAdd(code, note, branch){
-  const d = CAT[code]; if(!d) return;
+function doReorder(code, branch){
+  const item=orders[branch].find(i=>i.code===code);
+  if(!item)return;
+  item.status='รอสั่ง';
+  item.orderedAt=null;
+  if(!String(item.note||'').includes('ตามของ')){
+    item.note=(item.note?item.note+' ':'')+'⏰ตามของ-สั่งซ้ำ';
+  }
+  if(item.rowId) sheetReorder(branch,item.rowId);
   closeModal('histModal');
-  const rowId = Date.now()+'-'+Math.random().toString(36).slice(2,7);
-  const item = {code, name:d.n, unit:d.u,
-    supplier:d.ds||d.sups[0].s, note, branch, sups:d.sups, rowId};
-  orders[branch].push(item);
-  toast('เพิ่ม '+d.n);
   resetForm();
-  if(isOwner) renderOTabs();
-  renderOrder();
-  sheetAdd(branch, item)
-    .then(()=>toast('☁️ บันทึก Sheets แล้ว'))
-    .catch(()=>toast('⚠️ Sheets ไม่สำเร็จ'));
+  statusFilter='รอสั่ง';
+  document.querySelectorAll('.stTab').forEach(t=>t.classList.toggle('active',t.getAttribute('data-st')==='รอสั่ง'));
+  if(isOwner)renderOTabs();renderOrder();
+  toast('⏰ ส่งกลับให้เจ้าของสั่งซ้ำแล้ว');
 }
 
 function addFromDB(){
   if(!selDrug)return;
   const note=document.getElementById('noteInput').value.trim();
   const b=activeBranch();
-  const dup=orders[b].find(i=>i.code===selDrug.code&&!i.custom);
-  if(dup){toast('มีรายการนี้อยู่แล้ว');return;}
-  // Check if ordered within 7 days for this branch
-  const recent=checkRecentOrder(selDrug.code, b);
-  if(recent){
-    showRecentWarning(selDrug, note, b, recent);
+  // Check existing item in รอสั่ง or รอของ
+  const existing=orders[b].find(i=>i.code===selDrug.code&&!i.custom);
+  if(existing){
+    showDupWarning(selDrug, note, b, existing);
     return;
   }
   const rowId=Date.now()+'-'+Math.random().toString(36).slice(2,7);
@@ -653,22 +691,21 @@ function removeItem(b,code){
 }
 function clearBranch(){
   const b=activeBranch();
-  if(!orders[b].filter(i=>!i.ordered).length)return;
-  if(!confirm('ล้างรายการของ '+b+'?'))return;
-  orders[b]=orders[b].filter(i=>i.ordered);
+  const toClear=orders[b].filter(i=>(i.status||'รอสั่ง')===statusFilter);
+  if(!toClear.length)return;
+  if(!confirm('ล้างรายการ "'+statusFilter+'" ของ '+b+'? ('+toClear.length+' รายการ)'))return;
+  toClear.forEach(i=>{ if(i.rowId) sheetDelete(b,i.rowId); });
+  orders[b]=orders[b].filter(i=>(i.status||'รอสั่ง')!==statusFilter);
   if(isOwner)renderOTabs();renderOrder();
 }
 
 // ── MARK ORDERED ──
 function markOrdered(b,code){
   const item=orders[b].find(i=>i.code===code);if(!item)return;
-  item.ordered=true;item.orderedAt=new Date().toLocaleDateString('th-TH');
-  // Cache in recentOrdered
-  if(!recentOrdered[b]) recentOrdered[b]=[];
-  recentOrdered[b].push({code:item.code,name:item.name,unit:item.unit,
-    qty:item.qty,orderedAt:item.orderedAt});
+  item.status='รอของ';
+  item.orderedAt=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
   if(isOwner)renderOTabs();renderOrder();
-  toast('✅ สั่งแล้ว: '+item.name);
+  toast('📦 สั่งแล้ว (รอของ): '+item.name);
   if(item.rowId) sheetOrdered(b,item.rowId);
 }
 
@@ -709,21 +746,48 @@ function loadRecentOrdered(branch){
   return fetch(url).then(r=>r.json()).then(d=>d.items||[]).catch(()=>[]);
 }
 function markAllOrdered(b,sup){
-  const its=orders[b].filter(i=>i.supplier===sup&&!i.ordered);
-  if(!recentOrdered[b]) recentOrdered[b]=[];
+  const its=orders[b].filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')==='รอสั่ง');
+  const ts=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
   its.forEach(i=>{
-    i.ordered=true;i.orderedAt=new Date().toLocaleDateString('th-TH');
-    recentOrdered[b].push({code:i.code,name:i.name,unit:i.unit,
-      qty:i.qty,orderedAt:i.orderedAt});
+    i.status='รอของ';i.orderedAt=ts;
     if(i.rowId) sheetOrdered(b,i.rowId);
   });
   if(isOwner)renderOTabs();renderOrder();
-  toast('✅ สั่งแล้ว '+its.length+' รายการ');
+  toast('📦 สั่งแล้ว '+its.length+' รายการ');
+}
+
+function receiveItem(el){
+  const b=el.getAttribute('data-branch');
+  const code=el.getAttribute('data-code');
+  const item=orders[b].find(i=>i.code===code&&i.status==='รอของ');
+  if(!item)return;
+  // remove from orders (received = gone)
+  orders[b]=orders[b].filter(i=>i!==item);
+  if(isOwner)renderOTabs();renderOrder();
+  toast('📥 รับของแล้ว: '+item.name);
+  if(item.rowId) sheetReceived(b,item.rowId);
+}
+
+function receiveAll(b){
+  const its=orders[b].filter(i=>i.status==='รอของ');
+  if(!its.length){toast('ไม่มีรายการรอของ');return;}
+  if(!confirm('ยืนยันรับของทั้งหมด '+its.length+' รายการ?'))return;
+  its.forEach(i=>{ if(i.rowId) sheetReceived(b,i.rowId); });
+  orders[b]=orders[b].filter(i=>i.status!=='รอของ');
+  if(isOwner)renderOTabs();renderOrder();
+  toast('📥 รับของแล้ว '+its.length+' รายการ');
+}
+
+function sheetReceived(branch,rowId){
+  return api({action:'received',branch,rowId,receivedAt:new Date().toLocaleString('th-TH')});
+}
+function sheetReorder(branch,rowId){
+  return api({action:'reorder',branch,rowId});
 }
 
 // ── COPY / EXPORT ──
 function copySupplier(b,sup){
-  const items=orders[b].filter(i=>i.supplier===sup&&!i.ordered);
+  const items=orders[b].filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')===statusFilter);
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const lines=['บริษัท: '+sup,'สาขา: '+b,'วันที่: '+date,'---'];
@@ -731,7 +795,7 @@ function copySupplier(b,sup){
   navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy แล้ว ('+items.length+' รายการ)'));
 }
 function exportSupplier(b,sup){
-  const items=orders[b].filter(i=>i.supplier===sup&&!i.ordered);
+  const items=orders[b].filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')===statusFilter);
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const rows=[['ลำดับ','รหัส','ชื่อยา','หน่วย','หมายเหตุ','สาขา','วันที่']];
@@ -746,9 +810,13 @@ function exportSupplier(b,sup){
 // ── RENDER ORDER ──
 
 
+function copyName(el){
+  const name=el.getAttribute('data-name');
+  navigator.clipboard.writeText(name).then(()=>toast('📋 คัดลอก: '+name));
+}
 function copyAll(){
   const vb=isOwner?viewBranch:curBranch;
-  const items=(orders[vb]||[]).filter(i=>!i.ordered);
+  const items=(orders[vb]||[]).filter(i=>(i.status||'รอสั่ง')===statusFilter);
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const lines=['สาขา: '+vb,'วันที่: '+date,'---'];
@@ -793,7 +861,7 @@ function updateQty(el){
 function setLastQtyAll(el){
   const b=el.getAttribute('data-b');
   const sup=el.getAttribute('data-s');
-  const its=(orders[b]||[]).filter(i=>i.supplier===sup&&!i.ordered);
+  const its=(orders[b]||[]).filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')==='รอสั่ง');
   let set=0;
   const bKey=b.replace('สาขา ','');
   its.forEach(it=>{
@@ -837,20 +905,33 @@ function handleDel(el){
 }
 function renderOrder(){
   const vb=isOwner?viewBranch:curBranch;
-  const pending=(orders[vb]||[]).filter(i=>!i.ordered);
+  const all=(orders[vb]||[]);
+  // Count by status
+  const waitOrder=all.filter(i=>(i.status||'รอสั่ง')==='รอสั่ง');
+  const waitGoods=all.filter(i=>i.status==='รอของ');
+  document.getElementById('cntWait').textContent=waitOrder.length;
+  document.getElementById('cntOrdered').textContent=waitGoods.length;
+  // Filter by current tab
+  const shown=all.filter(i=>(i.status||'รอสั่ง')===statusFilter);
   updateLabels();
   const body=document.getElementById('orderBody');
-  if(!pending.length){
-    body.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:8px">💊</div><div style="font-size:12px">ยังไม่มีรายการ</div></div>';
-    document.getElementById('totBadge').textContent='0';
-    document.getElementById('totItems').textContent='0';
+  if(!shown.length){
+    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':'ยังไม่มีรายการรอของ';
+    body.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:8px">💊</div><div style="font-size:12px">'+msg+'</div></div>';
+    document.getElementById('totBadge').textContent=shown.length;
+    document.getElementById('totItems').textContent=shown.length;
     document.getElementById('totSup').textContent='0';
     return;
   }
   const grouped={};
-  pending.forEach(it=>{if(!grouped[it.supplier])grouped[it.supplier]=[];grouped[it.supplier].push(it);});
+  shown.forEach(it=>{if(!grouped[it.supplier])grouped[it.supplier]=[];grouped[it.supplier].push(it);});
   const sc=Object.keys(grouped).length;
-  let html=`<div class="sBar"><span>📦 <b>${sc}</b> บริษัท</span><span>💊 <b>${pending.length}</b> รายการ</span></div>`;
+  const isWaitGoods=statusFilter==='รอของ';
+  let html=`<div class="sBar"><span>📦 <b>${sc}</b> บริษัท</span><span>💊 <b>${shown.length}</b> รายการ</span>`;
+  if(isWaitGoods){
+    html+=`<span style="margin-left:auto"><button class="btnSm btnRecvAll" onclick="receiveAll('${ea(vb)}')">✅ รับของแล้วทั้งหมด</button></span>`;
+  }
+  html+=`</div>`;
   Object.keys(grouped).forEach(sup=>{
     const its=grouped[sup];
     html+=`<div class="supSec">
@@ -860,29 +941,32 @@ function renderOrder(){
           <span class="supCnt">${its.length} รายการ</span>
           <button class="btnSm btnCopy" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="handleCopy(this)">📋 Copy</button>
           <button class="btnSm btnXl" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="handleXl(this)">⬇️ Excel</button>
-          ${isOwner?`<button class="btnLastQty" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="setLastQtyAll(this)">📦 จำนวนล่าสุด</button>`:''}
-          ${isOwner?`<button class="btnSm btnOrdAll" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="handleOrdAll(this)">✅ สั่งแล้วทั้งหมด</button>`:''}
+          ${isOwner&&!isWaitGoods?`<button class="btnLastQty" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="setLastQtyAll(this)">📦 จำนวนล่าสุด</button>`:''}
+          ${isOwner&&!isWaitGoods?`<button class="btnSm btnOrdAll" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="markAllOrdered(this.getAttribute('data-b'),this.getAttribute('data-s'))">✅ สั่งแล้วทั้งหมด</button>`:''}
         </div>
       </div>`;
     its.forEach(it=>{
       const qtyVal=it.qty!=null?it.qty:'';
       const bKey=vb.replace('สาขา ','');
       const recQty=SALES[it.code]&&SALES[it.code][bKey]?SALES[it.code][bKey]:null;
+      const waitInfo=isWaitGoods&&it.orderedAt?`<span class="waitBadge ww">📦 สั่งเมื่อ ${esc(it.orderedAt)}</span>`:'';
       html+=`<div class="iRow" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="handleRowClick(this)">
         <div>
-          <div class="iName">${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''}</div>
+          <div class="iName">${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''} <span class="copyIcon" data-name="${esc(it.name)}" onclick="event.stopPropagation();copyName(this)" title="คัดลอกชื่อ">📋</span></div>
           <div class="iMeta">${it.custom?'':esc(it.code)} | ${esc(it.unit)}</div>
           ${it.note?`<span class="iNote">📝 ${esc(it.note)}</span>`:''}
+          ${waitInfo}
           <div class="iHint">คลิกดูประวัติ / เปลี่ยนบริษัท</div>
         </div>
         <div class="iActions">
-          ${isOwner?`<div style="display:flex;flex-direction:column;gap:3px;align-items:center">
+          ${isOwner&&!isWaitGoods?`<div style="display:flex;flex-direction:column;gap:3px;align-items:center">
             <input class="qtyInput" type="number" min="1" placeholder="จำนวน"
               value="${qtyVal}" data-code="${esc(it.code)}" data-branch="${esc(vb)}"
               onclick="event.stopPropagation()" onchange="event.stopPropagation();updateQty(this)">
             ${recQty?`<button class="recBadge" data-code="${esc(it.code)}" data-branch="${esc(vb)}" data-rec="${recQty}" onclick="event.stopPropagation();useRec(this)">แนะนำ ${recQty}</button>`:''}
           </div>`:(qtyVal?`<span class="qtyBadge">${qtyVal} ${esc(it.unit)}</span>`:'')}
-          ${isOwner?`<button class="btnSm btnOrd" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();handleOrd(this)">✅</button>`:''}
+          ${isOwner&&!isWaitGoods?`<button class="btnSm btnOrd" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();handleOrd(this)">✅</button>`:''}
+          ${isWaitGoods?`<button class="btnRecv" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();receiveItem(this)">📥 รับของ</button>`:''}
           <button class="btnDel" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();handleDel(this)">✕</button>
         </div>
       </div>`;
@@ -890,17 +974,21 @@ function renderOrder(){
     html+='</div>';
   });
   body.innerHTML=html;
-  document.getElementById('totBadge').textContent=pending.length;
-  document.getElementById('totItems').textContent=pending.length;
+  document.getElementById('totBadge').textContent=shown.length;
+  document.getElementById('totItems').textContent=shown.length;
   document.getElementById('totSup').textContent=sc;
 }
 
-// ── HISTORY + CHANGE SUPPLIER ──
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esc(s){return escHtml(s);}
+function ea(s){return String(s||'').replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;');}
+function escAttr(s){return ea(s);}
+
+// ── HISTORY / CHANGE SUPPLIER ──
 function showHist(code,branch){
   histCtx={code,branch};
   const item=(orders[branch]||[]).find(i=>i.code===code);
   const curSup=item?item.supplier:null;
-  // Get sups list: from order item (has full sups) or from CAT
   const catD=CAT[code];
   const supsArr=item&&item.sups?item.sups:(catD?catD.sups:[]);
   const name=item?item.name:(catD?catD.n:code);
@@ -911,30 +999,20 @@ function showHist(code,branch){
     html='<div style="color:var(--mut);font-size:12px;padding:10px">ไม่มีข้อมูลในระบบ</div>';
   }else{
     if(curSup){
-      html+=`<div style="background:#fff3cd;border-radius:7px;padding:8px 11px;margin-bottom:12px;font-size:12px">
-        <b>บริษัทที่เลือกอยู่:</b> <span style="color:var(--pri);font-weight:700">${esc(curSup)}</span>
-      </div>`;
+      html+=`<div style="background:#fff3cd;border-radius:7px;padding:8px 11px;margin-bottom:12px;font-size:12px"><b>บริษัทที่เลือกอยู่:</b> <span style="color:var(--pri);font-weight:700">${esc(curSup)}</span></div>`;
     }
     supsArr.forEach(s=>{
       const isCur=s.s===curSup;
-      html+=`<div class="supCard">
-        <div class="supCardHead ${isCur?'isCur':'notCur'}">
-          <span class="supCardName">🏢 ${esc(s.s)}</span>
-          <div style="display:flex;gap:6px;align-items:center">
-            ${isCur?'<span style="font-size:11px;color:var(--grn);font-weight:600">✓ เลือกอยู่</span>':''}
-            ${!isCur&&branch?`<button class="btnSm btnChg" onclick="changeSup('${ea(s.s)}')">เปลี่ยนมาที่นี่</button>`:''}
-          </div>
-        </div>`;
+      html+=`<div class="supCard"><div class="supCardHead ${isCur?'isCur':'notCur'}">
+        <span class="supCardName">🏢 ${esc(s.s)}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${isCur?'<span style="font-size:11px;color:var(--grn);font-weight:600">✓ เลือกอยู่</span>':''}
+          ${!isCur&&branch?`<button class="btnSm btnChg" onclick="changeSup('${ea(s.s)}')">เปลี่ยนมาที่นี่</button>`:''}
+        </div></div>`;
       if(s.h&&s.h.length){
-        html+=`<table class="histTab"><thead><tr>
-          <th>วันที่</th><th>ใบรับ</th><th style="text-align:center">จำนวน</th><th style="text-align:center">สาขา</th>
-        </tr></thead><tbody>`;
+        html+=`<table class="histTab"><thead><tr><th>วันที่</th><th>ใบรับ</th><th style="text-align:center">จำนวน</th><th style="text-align:center">สาขา</th></tr></thead><tbody>`;
         s.h.forEach(h=>{
-          html+=`<tr><td>${h[0]}</td><td style="color:var(--mut);font-size:10px">${h[4]}</td>
-            <td style="text-align:center;font-weight:600">${h[1]} ${esc(unit)}</td>
-            <td style="text-align:center;color:var(--pri);font-weight:600">สาขา${h[2]}</td>
-            <td style="text-align:center">${isOwner&&branch?`<button class="pickQtyBtn" onclick="pickQty(${h[1]},'${esc(code)}','${esc(branch)}')">${h[1]} ${esc(unit)}</button>`:''}
-            </td></tr>`;
+          html+=`<tr><td>${h[0]}</td><td style="color:var(--mut);font-size:10px">${h[4]}</td><td style="text-align:center;font-weight:600">${h[1]} ${esc(unit)}</td><td style="text-align:center;color:var(--pri);font-weight:600">สาขา${h[2]}</td></tr>`;
         });
         html+='</tbody></table>';
       }else{
@@ -943,43 +1021,16 @@ function showHist(code,branch){
       html+='</div>';
     });
   }
-  // Add manual supplier change section at bottom
   if(branch){
     html+=`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bdr)">
       <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">เปลี่ยนบริษัทเอง</div>
       <div style="display:flex;gap:8px">
-        <input type="text" id="manualSupInput" placeholder="พิมพ์ชื่อบริษัท..." 
-          style="flex:1;border:1.5px solid var(--bdr);border-radius:7px;padding:7px 10px;font-family:Sarabun,sans-serif;font-size:13px;outline:none"
-          onfocus="this.style.borderColor='var(--pri)'" onblur="this.style.borderColor='var(--bdr)'"
-          onkeydown="if(event.key==='Enter')confirmManualSup()">
+        <input type="text" id="manualSupInput" placeholder="พิมพ์ชื่อบริษัท..." style="flex:1;border:1.5px solid var(--bdr);border-radius:7px;padding:7px 10px;font-family:Sarabun,sans-serif;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')confirmManualSup()">
         <button class="btnSm btnChg" style="padding:7px 14px;font-size:13px" onclick="confirmManualSup()">ยืนยัน</button>
-      </div>
-    </div>`;
+      </div></div>`;
   }
   document.getElementById('histBody').innerHTML=html;
   document.getElementById('histModal').classList.add('open');
-  if(branch) setTimeout(()=>{
-    const inp=document.getElementById('manualSupInput');
-    if(inp && curSup==='ไม่ทราบบริษัท') inp.focus();
-  },100);
-}
-
-function pickQty(qty,code,branch){
-  const item=(orders[branch]||[]).find(i=>i.code===code);
-  if(item){
-    item.qty=qty;
-    if(item.rowId) sheetQty(branch,item.rowId,qty);
-    closeModal('histModal');
-    renderOrder();
-    toast('📦 ใส่จำนวน '+qty+' แล้ว');
-  }
-}
-function confirmManualSup(){
-  const inp=document.getElementById('manualSupInput');
-  if(!inp)return;
-  const val=inp.value.trim();
-  if(!val){inp.style.borderColor='var(--acc)';return;}
-  changeSup(val);
 }
 
 function changeSup(newSup){
@@ -988,19 +1039,19 @@ function changeSup(newSup){
   const item=(orders[branch]||[]).find(i=>i.code===code);
   if(!item)return;
   item.supplier=newSup;
-  // Update sups list for future history popup
-  if(item.sups&&!item.sups.find(s=>s.s===newSup)){
-    item.sups.push({s:newSup,h:[]});
-  }
+  if(item.sups&&!item.sups.find(s=>s.s===newSup)) item.sups.push({s:newSup,h:[]});
   closeModal('histModal');
-  if(isOwner)renderOTabs();
-  renderOrder();
+  if(isOwner)renderOTabs();renderOrder();
   toast('เปลี่ยนเป็น '+newSup);
-  // Update Sheet: delete old row then re-add with new supplier
-  if(item.rowId){
-    sheetDelete(branch,item.rowId).then(()=>sheetAdd(branch,item))
-      .catch(()=>toast('⚠️ อัปเดต Sheets ไม่สำเร็จ'));
-  }
+  if(item.rowId){ sheetDelete(branch,item.rowId).then(()=>sheetAdd(branch,item)).catch(()=>{}); }
+}
+
+function confirmManualSup(){
+  const inp=document.getElementById('manualSupInput');
+  if(!inp)return;
+  const val=inp.value.trim();
+  if(!val){inp.style.borderColor='var(--acc)';return;}
+  changeSup(val);
 }
 
 // ── PRINT ──
@@ -1009,21 +1060,20 @@ function openPrint(){
   const date=document.getElementById('orderDate').value;
   let html='',any=false;
   branches.forEach(bname=>{
-    const items=(orders[bname]||[]).filter(i=>!i.ordered);
+    const items=(orders[bname]||[]).filter(i=>(i.status||'รอสั่ง')===statusFilter);
     if(!items.length)return;
     any=true;
     const grouped={};
     items.forEach(it=>{if(!grouped[it.supplier])grouped[it.supplier]=[];grouped[it.supplier].push(it);});
     html+=`<div style="margin-bottom:12px;padding:9px;background:#f0f4f8;border-radius:8px">
-      <div style="font-size:14px;font-weight:700;color:var(--pri)">พระจันทร์เภสัช — ${esc(bname)}</div>
-      <div style="font-size:11px;color:var(--mut);margin-top:2px">วันที่: ${date} | ${items.length} รายการ / ${Object.keys(grouped).length} บริษัท</div>
-    </div>`;
+      <div style="font-size:14px;font-weight:700;color:var(--pri)">พระจันทร์เภสัช — ${esc(bname)} (${statusFilter})</div>
+      <div style="font-size:11px;color:var(--mut);margin-top:2px">วันที่: ${date} | ${items.length} รายการ / ${Object.keys(grouped).length} บริษัท</div></div>`;
     let idx=1;
     Object.keys(grouped).forEach(sup=>{
       html+=`<div class="pSec"><h3>${idx++}. ${esc(sup)} (${grouped[sup].length} รายการ)</h3>
-        <table class="pTab"><thead><tr><th>#</th><th>รหัส</th><th>ชื่อยา</th><th>หน่วย</th><th>หมายเหตุ</th></tr></thead><tbody>`;
+        <table class="pTab"><thead><tr><th>#</th><th>รหัส</th><th>ชื่อยา</th><th>จำนวน</th><th>หน่วย</th><th>หมายเหตุ</th></tr></thead><tbody>`;
       grouped[sup].forEach((it,i)=>{
-        html+=`<tr><td>${i+1}</td><td>${it.custom?'-':esc(it.code)}</td><td>${esc(it.name)}</td><td>${esc(it.unit)}</td><td style="color:#856404">${esc(it.note||'')}</td></tr>`;
+        html+=`<tr><td>${i+1}</td><td>${it.custom?'-':esc(it.code)}</td><td>${esc(it.name)}</td><td style="text-align:center">${it.qty||''}</td><td>${esc(it.unit)}</td><td style="color:#856404">${esc(it.note||'')}</td></tr>`;
       });
       html+='</tbody></table></div>';
     });
@@ -1035,25 +1085,7 @@ function openPrint(){
 
 // ── LOG ──
 function openLog(){
-  let html='',any=false;
-  BRANCHES.forEach(b=>{
-    if(!log[b].length)return;
-    any=true;
-    const grouped={};
-    log[b].forEach(it=>{if(!grouped[it.supplier])grouped[it.supplier]=[];grouped[it.supplier].push(it);});
-    html+=`<div style="background:var(--pli);border-radius:8px;padding:9px 11px;margin-bottom:12px;font-weight:700;color:var(--pri);font-size:13px">🏪 ${esc(b)}</div>`;
-    Object.keys(grouped).forEach(sup=>{
-      html+=`<div style="margin-bottom:12px"><div style="font-weight:700;font-size:12px;color:var(--pri);margin-bottom:5px">🏢 ${esc(sup)}</div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:var(--pli)"><th style="padding:5px 8px;text-align:left">ชื่อยา</th><th style="padding:5px 8px">หน่วย</th><th style="padding:5px 8px">หมายเหตุ</th><th style="padding:5px 8px">สั่งเมื่อ</th></tr></thead><tbody>`;
-      grouped[sup].forEach(it=>{
-        html+=`<tr style="border-bottom:1px solid #f0f4f8"><td style="padding:5px 8px">${esc(it.name)}</td><td style="padding:5px 8px;text-align:center">${esc(it.unit)}</td><td style="padding:5px 8px;color:#856404">${esc(it.note||'')}</td><td style="padding:5px 8px;color:var(--grn);font-weight:600">${it.orderedAt||''}</td></tr>`;
-      });
-      html+='</tbody></table></div>';
-    });
-  });
-  if(!any)html='<div style="color:var(--mut);text-align:center;padding:30px">ยังไม่มีประวัติ</div>';
-  document.getElementById('logBody').innerHTML=html;
+  document.getElementById('logBody').innerHTML='<div style="color:var(--mut);text-align:center;padding:30px">ดูประวัติทั้งหมดได้ใน Google Sheets<br>(รายการรับของแล้วจะอยู่ในสถานะ "รับแล้ว")</div>';
   document.getElementById('logModal').classList.add('open');
 }
 
@@ -1061,89 +1093,9 @@ function openLog(){
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.mOver').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
 
-// ── HELPERS ──
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function ea(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,'\\x27').replace(/"/g,'\\x22');}
-// ── BARCODE SCANNER ──
-let scanStream=null;
-let scanInterval=null;
-
-function openScan(mode){
-  document.getElementById('scanArea').style.display='block';
-  document.getElementById('bcInput').value='';
-  if(mode==='camera'){
-    startCamera();
-  } else {
-    stopCamera();
-    setTimeout(()=>document.getElementById('bcInput').focus(),100);
-  }
-}
-
-function closeScan(){
-  stopCamera();
-  document.getElementById('scanArea').style.display='none';
-}
-
-function stopCamera(){
-  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
-  if(scanInterval){clearInterval(scanInterval);scanInterval=null;}
-  const v=document.getElementById('scanVideo');
-  v.srcObject=null;
-}
-
-async function startCamera(){
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
-    });
-    scanStream=stream;
-    const v=document.getElementById('scanVideo');
-    v.srcObject=stream;
-    await v.play();
-    // Use BarcodeDetector if available
-    if('BarcodeDetector' in window){
-      const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39']});
-      scanInterval=setInterval(async()=>{
-        try{
-          const barcodes=await detector.detect(v);
-          if(barcodes.length>0){
-            const bc=barcodes[0].rawValue;
-            closeScan();
-            handleBarcode(bc);
-          }
-        }catch(e){}
-      },500);
-    } else {
-      toast('กล้องพร้อม — เล็งที่ barcode แล้วพิมพ์ในช่องด้านล่าง');
-    }
-  }catch(e){
-    toast('ไม่สามารถเปิดกล้องได้: '+e.message);
-    stopCamera();
-  }
-}
-
-function handleBcInput(){
-  const bc=document.getElementById('bcInput').value.trim();
-  if(!bc)return;
-  closeScan();
-  handleBarcode(bc);
-}
-
-function handleBarcode(bc){
-  // Look up barcode in BC map
-  const code=BC.bc&&BC.bc[bc];
-  if(code&&CAT[code]){
-    pickDrug(code);
-    toast('🔍 พบ: '+CAT[code].n);
-  } else {
-    // Not found - show in search box so user can search manually
-    document.getElementById('si').value=bc;
-    document.getElementById('si').dispatchEvent(new Event('input'));
-    toast('⚠️ ไม่พบ barcode '+bc+' ในระบบ');
-  }
-}
-
+// ── TOAST ──
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
-</script>
 
-</body></html>
+</script>
+</body>
+</html>
