@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_33.html -->
+<html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ระบบสั่งยา – พระจันทร์เภสัช</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="./index_files/css2" rel="stylesheet">
 <style>
 :root{--bg:#f0f4f8;--w:#fff;--pri:#1a56a0;--pli:#e8f0fb;--acc:#e63946;--grn:#2d9b4e;--bdr:#d1dce8;--txt:#1a2433;--mut:#6b7f96;--rad:12px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -159,7 +159,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
     <div class="bsLogo">🏥</div>
     <div class="bsTitle">พระจันทร์เภสัช</div>
     <div class="bsSub">เลือกสาขาเพื่อเริ่มใช้งาน</div>
-    <div class="bsList" id="bsList"></div>
+    <div class="bsList" id="bsList"><button class="bsBtn" onclick="pickBranch(&#39;สาขา 1&#39;)"><span>🏪</span>สาขา 1</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 2&#39;)"><span>🏪</span>สาขา 2</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 3&#39;)"><span>🏪</span>สาขา 3</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 4&#39;)"><span>🏪</span>สาขา 4</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 5&#39;)"><span>🏪</span>สาขา 5</button></div>
     <button class="ownerLink" onclick="openPin()">🔐 เจ้าของ / ดูทุกสาขา</button>
   </div>
 </div>
@@ -172,11 +172,11 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
       <div class="pinDot" id="pd2"></div><div class="pinDot" id="pd3"></div>
     </div>
     <div class="pinPad">
-      <button class="pinKey" onclick="pk('1')">1</button><button class="pinKey" onclick="pk('2')">2</button><button class="pinKey" onclick="pk('3')">3</button>
-      <button class="pinKey" onclick="pk('4')">4</button><button class="pinKey" onclick="pk('5')">5</button><button class="pinKey" onclick="pk('6')">6</button>
-      <button class="pinKey" onclick="pk('7')">7</button><button class="pinKey" onclick="pk('8')">8</button><button class="pinKey" onclick="pk('9')">9</button>
+      <button class="pinKey" onclick="pk(&#39;1&#39;)">1</button><button class="pinKey" onclick="pk(&#39;2&#39;)">2</button><button class="pinKey" onclick="pk(&#39;3&#39;)">3</button>
+      <button class="pinKey" onclick="pk(&#39;4&#39;)">4</button><button class="pinKey" onclick="pk(&#39;5&#39;)">5</button><button class="pinKey" onclick="pk(&#39;6&#39;)">6</button>
+      <button class="pinKey" onclick="pk(&#39;7&#39;)">7</button><button class="pinKey" onclick="pk(&#39;8&#39;)">8</button><button class="pinKey" onclick="pk(&#39;9&#39;)">9</button>
       <button class="pinKey" style="font-size:11px;color:var(--mut)" onclick="closePin()">ยกเลิก</button>
-      <button class="pinKey" onclick="pk('0')">0</button>
+      <button class="pinKey" onclick="pk(&#39;0&#39;)">0</button>
       <button class="pinKey" style="color:var(--acc)" onclick="pkDel()">⌫</button>
     </div>
     <div class="pinErr" id="pinErr"></div>
@@ -210,20 +210,19 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
                 <div class="drop" id="drop"></div>
               </div>
               <div style="display:flex;gap:6px;margin-top:6px">
-                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan('camera')">📷 Scan กล้อง</button>
-                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan('manual')">🔢 พิมพ์ Barcode</button>
+                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan(&#39;camera&#39;)">📷 Scan กล้อง</button>
+                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan(&#39;manual&#39;)">🔢 พิมพ์ Barcode</button>
               </div>
             </div>
 
             <!-- SCANNER AREA -->
             <div id="scanArea" style="display:none;margin-bottom:10px">
               <div style="background:#000;border-radius:8px;overflow:hidden;position:relative">
-                <video id="scanVideo" style="width:100%;max-height:200px;display:block" playsinline></video>
+                <video id="scanVideo" style="width:100%;max-height:200px;display:block" playsinline=""></video>
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;height:2px;background:rgba(255,80,80,.8);box-shadow:0 0 8px red"></div>
               </div>
               <div style="display:flex;gap:6px;margin-top:6px">
-                <input type="text" id="bcInput" placeholder="หรือพิมพ์ barcode แล้วกด Enter..." style="flex:1;font-size:13px"
-                  onkeydown="if(event.key==='Enter')handleBcInput()">
+                <input type="text" id="bcInput" placeholder="หรือพิมพ์ barcode แล้วกด Enter..." style="flex:1;font-size:13px" onkeydown="if(event.key===&#39;Enter&#39;)handleBcInput()">
                 <button class="btn btnOut btn-sm" onclick="closeScan()">✕ ปิด</button>
               </div>
             </div>
@@ -261,8 +260,8 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
           <div class="cHead">🛒 รายการสั่งยา — <span id="orderBranch"></span><span class="badge" id="totBadge">0</span></div>
           <div class="cBody">
             <div class="statusTabs" id="statusTabs">
-              <button class="stTab active" data-st="รอสั่ง" onclick="setStatusFilter('รอสั่ง')">📝 รอสั่ง<span class="stcnt" id="cntWait">0</span></button>
-              <button class="stTab" data-st="รอของ" onclick="setStatusFilter('รอของ')">📦 รอของ<span class="stcnt" id="cntOrdered">0</span></button>
+              <button class="stTab active" data-st="รอสั่ง" onclick="setStatusFilter(&#39;รอสั่ง&#39;)">📝 รอสั่ง<span class="stcnt" id="cntWait">0</span></button>
+              <button class="stTab" data-st="รอของ" onclick="setStatusFilter(&#39;รอของ&#39;)">📦 รอของ<span class="stcnt" id="cntOrdered">0</span></button>
             </div>
             <div id="orderBody"></div>
           </div>
@@ -287,7 +286,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 <!-- HISTORY / CHANGE SUP MODAL -->
 <div class="mOver noPrint" id="histModal">
   <div class="mBox">
-    <div class="mHead"><span class="mTitle" id="histTitle">📦 ประวัติรับยา</span><button class="mClose" onclick="closeModal('histModal')">✕</button></div>
+    <div class="mHead"><span class="mTitle" id="histTitle">📦 ประวัติรับยา</span><button class="mClose" onclick="closeModal(&#39;histModal&#39;)">✕</button></div>
     <div class="mBody" id="histBody"></div>
   </div>
 </div>
@@ -299,7 +298,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
       <span class="mTitle">📄 สรุปใบสั่งยา</span>
       <div style="display:flex;gap:7px;align-items:center">
         <button class="btnSm btnCopy" onclick="window.print()">🖨️ พิมพ์</button>
-        <button class="mClose" onclick="closeModal('printModal')">✕</button>
+        <button class="mClose" onclick="closeModal(&#39;printModal&#39;)">✕</button>
       </div>
     </div>
     <div class="mBody" id="printBody"></div>
@@ -309,7 +308,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 <!-- LOG MODAL -->
 <div class="mOver noPrint" id="logModal">
   <div class="mBox" style="max-width:720px">
-    <div class="mHead"><span class="mTitle">✅ ประวัติสั่งซื้อ</span><button class="mClose" onclick="closeModal('logModal')">✕</button></div>
+    <div class="mHead"><span class="mTitle">✅ ประวัติสั่งซื้อ</span><button class="mClose" onclick="closeModal(&#39;logModal&#39;)">✕</button></div>
     <div class="mBody" id="logBody"></div>
   </div>
 </div>
@@ -1103,9 +1102,81 @@ function openLog(){
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.mOver').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
 
+// ── BARCODE SCANNER ──
+let scanStream=null;
+let scanInterval=null;
+
+function openScan(mode){
+  document.getElementById('scanArea').style.display='block';
+  document.getElementById('bcInput').value='';
+  if(mode==='camera'){
+    startCamera();
+  } else {
+    stopCamera();
+    setTimeout(()=>document.getElementById('bcInput').focus(),100);
+  }
+}
+function closeScan(){
+  stopCamera();
+  document.getElementById('scanArea').style.display='none';
+}
+function stopCamera(){
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+  if(scanInterval){clearInterval(scanInterval);scanInterval=null;}
+  const v=document.getElementById('scanVideo');
+  if(v) v.srcObject=null;
+}
+async function startCamera(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
+    });
+    scanStream=stream;
+    const v=document.getElementById('scanVideo');
+    v.srcObject=stream;
+    await v.play();
+    if('BarcodeDetector' in window){
+      const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39']});
+      scanInterval=setInterval(async()=>{
+        try{
+          const barcodes=await detector.detect(v);
+          if(barcodes.length>0){
+            const bc=barcodes[0].rawValue;
+            closeScan();
+            handleBarcode(bc);
+          }
+        }catch(e){}
+      },500);
+    } else {
+      toast('เบราว์เซอร์ไม่รองรับ auto-detect — พิมพ์เลขในช่องด้านล่าง');
+    }
+  }catch(e){
+    toast('เปิดกล้องไม่ได้: '+e.message);
+    stopCamera();
+  }
+}
+function handleBcInput(){
+  const bc=document.getElementById('bcInput').value.trim();
+  if(!bc)return;
+  closeScan();
+  handleBarcode(bc);
+}
+function handleBarcode(bc){
+  const clean=bc.replace(/[^0-9]/g,'');
+  const code=(BC.bc&&(BC.bc[bc]||BC.bc[clean]));
+  if(code&&CAT[code]){
+    pickDrug(code);
+    toast('🔍 พบ: '+CAT[code].n);
+  } else {
+    document.getElementById('si').value=bc;
+    document.getElementById('si').dispatchEvent(new Event('input'));
+    toast('⚠️ ไม่พบ barcode '+bc+' ในระบบ');
+  }
+}
+
 // ── TOAST ──
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 
 </script>
-</body>
-</html>
+
+</body></html>
