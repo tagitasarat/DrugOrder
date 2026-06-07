@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_33.html -->
+<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_35.html -->
 <html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -108,6 +108,12 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 .waitBadge.ww{background:#fff3cd;color:#856404}
 .btnRecv{background:#1a56a0;color:#fff;border:none;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap}
 .btnRecvAll{background:#1a56a0;color:#fff;border:none}
+.branchChk{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1.5px solid var(--bdr);border-radius:8px;margin-bottom:6px;cursor:pointer}
+.branchChk input{width:17px;height:17px;cursor:pointer;accent-color:var(--pri)}
+.branchChkName{font-weight:700;font-size:13px;color:var(--ink)}
+.branchChkInfo{font-size:11px;color:var(--mut);margin-left:auto}
+.multiBranchBtn{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;color:#7c3aed;background:#f3ebff;border:1.5px solid #c4a7f0;border-radius:5px;padding:2px 9px;cursor:pointer;font-family:'Sarabun',sans-serif}
+.multiBranchBtn:hover{background:#e9ddfb}
 .qtyInput{width:64px;border:1.5px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;font-family:'Sarabun',sans-serif;outline:none}
 .qtyInput:focus{border-color:var(--pri)}
 .qtyBadge{font-size:11px;font-weight:700;color:var(--pri);background:var(--pli);padding:2px 8px;border-radius:5px;white-space:nowrap}
@@ -718,6 +724,106 @@ function markOrdered(b,code){
   if(item.rowId) sheetOrdered(b,item.rowId);
 }
 
+// สั่งแล้วแบบไม่ re-render ทั้งหน้า — ลบแถวออกจาก DOM ตรงๆ ไม่เด้ง scroll
+function markOrderedInPlace(b,code,btnEl){
+  const item=orders[b].find(i=>i.code===code);if(!item)return;
+  item.status='รอของ';
+  item.orderedAt=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  // Sync to Sheets
+  if(item.rowId) sheetOrdered(b,item.rowId);
+  // Update counter badges
+  const all=(orders[b]||[]);
+  document.getElementById('cntWait').textContent=all.filter(i=>(i.status||'รอสั่ง')==='รอสั่ง').length;
+  document.getElementById('cntOrdered').textContent=all.filter(i=>i.status==='รอของ').length;
+  // Find the row + its supplier section
+  const row=btnEl.closest('.iRow');
+  const supSec=btnEl.closest('.supSec');
+  toast('📦 สั่งแล้ว: '+item.name);
+  if(row){
+    row.style.transition='opacity .25s';
+    row.style.opacity='0';
+    setTimeout(()=>{
+      row.remove();
+      // If supplier section now has no rows left, remove the whole section
+      if(supSec && !supSec.querySelector('.iRow')){
+        supSec.style.transition='opacity .25s';
+        supSec.style.opacity='0';
+        setTimeout(()=>{
+          supSec.remove();
+          updateOrderBarCounts(b);
+        },250);
+      } else {
+        // update the supplier's count badge
+        if(supSec){
+          const cnt=supSec.querySelectorAll('.iRow').length;
+          const cntEl=supSec.querySelector('.supCnt');
+          if(cntEl) cntEl.textContent=cnt+' รายการ';
+        }
+        updateOrderBarCounts(b);
+      }
+      if(isOwner)renderOTabs();
+    },250);
+  } else {
+    if(isOwner)renderOTabs();renderOrder();
+  }
+}
+
+function removeRowInPlace(b,code,btnEl,dataUpdateFn){
+  // run data update + sheet sync
+  dataUpdateFn();
+  // update counters
+  const all=(orders[b]||[]);
+  const cw=document.getElementById('cntWait');
+  const co=document.getElementById('cntOrdered');
+  if(cw) cw.textContent=all.filter(i=>(i.status||'รอสั่ง')==='รอสั่ง').length;
+  if(co) co.textContent=all.filter(i=>i.status==='รอของ').length;
+  const row=btnEl.closest('.iRow');
+  const supSec=btnEl.closest('.supSec');
+  if(row){
+    row.style.transition='opacity .25s';
+    row.style.opacity='0';
+    setTimeout(()=>{
+      row.remove();
+      if(supSec && !supSec.querySelector('.iRow')){
+        supSec.remove();
+      } else if(supSec){
+        const cnt=supSec.querySelectorAll('.iRow').length;
+        const cntEl=supSec.querySelector('.supCnt');
+        if(cntEl) cntEl.textContent=cnt+' รายการ';
+      }
+      updateOrderBarCounts(b);
+      if(isOwner)renderOTabs();
+    },250);
+  } else {
+    if(isOwner)renderOTabs();renderOrder();
+  }
+}
+
+function updateOrderBarCounts(b){
+  const shown=(orders[b]||[]).filter(i=>(i.status||'รอสั่ง')===statusFilter);
+  const sups=new Set(shown.map(i=>i.supplier));
+  const totBadge=document.getElementById('totBadge');
+  const totItems=document.getElementById('totItems');
+  const totSup=document.getElementById('totSup');
+  if(totBadge) totBadge.textContent=shown.length;
+  if(totItems) totItems.textContent=shown.length;
+  if(totSup) totSup.textContent=sups.size;
+  // If nothing left in this tab, show empty state
+  if(!shown.length){
+    const body=document.getElementById('orderBody');
+    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':'ยังไม่มีรายการรอของ';
+    body.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:8px">💊</div><div style="font-size:12px">'+msg+'</div></div>';
+  } else {
+    // update sBar counts
+    const sBar=document.querySelector('#orderBody .sBar');
+    if(sBar){
+      const spans=sBar.querySelectorAll('span');
+      if(spans[0]) spans[0].innerHTML='📦 <b>'+sups.size+'</b> บริษัท';
+      if(spans[1]) spans[1].innerHTML='💊 <b>'+shown.length+'</b> รายการ';
+    }
+  }
+}
+
 function api(payload){
   return fetch('https://script.google.com/macros/s/AKfycbzxbWax1bHeK48CG1h3ecZBO-lMVdx0OW5cF4ooCK_tLDGMa1ox_QVcqdYwg7WRTrcm/exec',{
     method:'POST',mode:'no-cors',
@@ -770,11 +876,11 @@ function receiveItem(el){
   const code=el.getAttribute('data-code');
   const item=orders[b].find(i=>i.code===code&&i.status==='รอของ');
   if(!item)return;
-  // remove from orders (received = gone)
-  orders[b]=orders[b].filter(i=>i!==item);
-  if(isOwner)renderOTabs();renderOrder();
   toast('📥 รับของแล้ว: '+item.name);
-  if(item.rowId) sheetReceived(b,item.rowId);
+  removeRowInPlace(b,code,el,()=>{
+    orders[b]=orders[b].filter(i=>i!==item);
+    if(item.rowId) sheetReceived(b,item.rowId);
+  });
 }
 
 function receiveAll(b){
@@ -905,12 +1011,83 @@ function handleRowClick(el){
 function handleOrd(el){
   const code=el.getAttribute('data-code');
   const branch=el.getAttribute('data-branch');
-  markOrdered(branch,code);
+  // single-branch order (the 🔗 button handles multi-branch explicitly)
+  markOrderedInPlace(branch,code,el);
+}
+
+function openMultiBranch(el){
+  const code=el.getAttribute('data-code');
+  const branch=el.getAttribute('data-branch');
+  const otherBranches=BRANCHES.filter(b=>b!==branch &&
+    (orders[b]||[]).some(i=>i.code===code&&(i.status||'รอสั่ง')==='รอสั่ง'));
+  showMultiBranchOrder(code,branch,otherBranches,el);
+}
+
+function showMultiBranchOrder(code,curB,otherBranches,btnEl){
+  const item=(orders[curB]||[]).find(i=>i.code===code);
+  const name=item?item.name:code;
+  const allBranches=[curB,...otherBranches];
+  let body=`<div style="font-size:13px;margin-bottom:4px;color:var(--mut)">ยานี้มีหลายสาขาที่รอสั่งอยู่ เลือกสาขาที่ต้องการสั่งรวมทีเดียว</div>
+    <div style="font-weight:700;font-size:14px;color:var(--pri);margin-bottom:10px">💊 ${esc(name)}</div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+      <button class="btnSm btnChg" onclick="toggleAllBranchChk(this)">เลือกทั้งหมด</button>
+    </div>
+    <div id="branchChkList">`;
+  allBranches.forEach(b=>{
+    const it=(orders[b]||[]).find(i=>i.code===code&&(i.status||'รอสั่ง')==='รอสั่ง');
+    const qty=it&&it.qty?it.qty:'';
+    const note=it&&it.note?it.note:'';
+    body+=`<label class="branchChk">
+      <input type="checkbox" value="${esc(b)}" checked>
+      <span class="branchChkName">${esc(b)}</span>
+      <span class="branchChkInfo">${qty?'จำนวน '+qty:'<span style=\'color:var(--acc)\'>ยังไม่ใส่จำนวน</span>'}${note?' · '+esc(note):''}</span>
+    </label>`;
+  });
+  body+=`</div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btnOut" style="flex:1" onclick="closeModal('histModal')">ยกเลิก</button>
+      <button class="btn btnPri" style="flex:1" onclick="confirmMultiBranchOrder('${esc(code)}')">✅ สั่งที่เลือก</button>
+    </div>`;
+  document.getElementById('histTitle').textContent='📦 สั่งยาหลายสาขาพร้อมกัน';
+  document.getElementById('histBody').innerHTML=body;
+  document.getElementById('histModal').classList.add('open');
+}
+
+function toggleAllBranchChk(btn){
+  const boxes=document.querySelectorAll('#branchChkList input[type=checkbox]');
+  const allChecked=Array.from(boxes).every(b=>b.checked);
+  boxes.forEach(b=>b.checked=!allChecked);
+  btn.textContent=allChecked?'เลือกทั้งหมด':'ไม่เลือกเลย';
+}
+
+function confirmMultiBranchOrder(code){
+  const boxes=document.querySelectorAll('#branchChkList input[type=checkbox]:checked');
+  const branches=Array.from(boxes).map(b=>b.value);
+  if(!branches.length){toast('เลือกอย่างน้อย 1 สาขา');return;}
+  closeModal('histModal');
+  const ts=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  let cnt=0;
+  branches.forEach(b=>{
+    const item=(orders[b]||[]).find(i=>i.code===code&&(i.status||'รอสั่ง')==='รอสั่ง');
+    if(item){
+      item.status='รอของ';
+      item.orderedAt=ts;
+      if(item.rowId) sheetOrdered(b,item.rowId);
+      cnt++;
+    }
+  });
+  if(isOwner)renderOTabs();
+  renderOrder();
+  toast('📦 สั่งแล้ว '+cnt+' สาขา');
 }
 function handleDel(el){
   const code=el.getAttribute('data-code');
   const branch=el.getAttribute('data-branch');
-  removeItem(branch,code);
+  removeRowInPlace(branch,code,el,()=>{
+    const item=orders[branch].find(i=>i.code===code);
+    orders[branch]=orders[branch].filter(i=>i.code!==code);
+    if(item&&item.rowId) sheetDelete(branch,item.rowId);
+  });
 }
 function renderOrder(){
   const vb=isOwner?viewBranch:curBranch;
@@ -959,12 +1136,21 @@ function renderOrder(){
       const bKey=vb.replace('สาขา ','');
       const recQty=SALES[it.code]&&SALES[it.code][bKey]?SALES[it.code][bKey]:null;
       const waitInfo=isWaitGoods&&it.orderedAt?`<span class="waitBadge ww">📦 สั่งเมื่อ ${esc(it.orderedAt)}</span>`:'';
+      // Count other branches with same code in รอสั่ง (owner only, รอสั่ง tab)
+      let multiBtn='';
+      if(isOwner&&!isWaitGoods){
+        const others=BRANCHES.filter(bb=>bb!==vb&&(orders[bb]||[]).some(x=>x.code===it.code&&(x.status||'รอสั่ง')==='รอสั่ง'));
+        if(others.length){
+          multiBtn=`<button class="multiBranchBtn" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();openMultiBranch(this)">🔗 +${others.length} สาขา</button>`;
+        }
+      }
       html+=`<div class="iRow" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="handleRowClick(this)">
         <div>
           <div class="iName">${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''} <span class="copyIcon" data-name="${esc(it.name)}" onclick="event.stopPropagation();copyName(this)" title="คัดลอกชื่อ">📋</span></div>
           <div class="iMeta">${it.custom?'':esc(it.code)} | ${esc(it.unit)}</div>
           ${it.note?`<span class="iNote">📝 ${esc(it.note)}</span>`:''}
           ${waitInfo}
+          ${multiBtn}
           <div class="iHint">คลิกดูประวัติ / เปลี่ยนบริษัท</div>
         </div>
         <div class="iActions">
