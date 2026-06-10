@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_35.html -->
+<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_40.html -->
 <html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -204,8 +204,19 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
     <div class="layout">
       <div>
         <div class="card">
-          <div class="cHead">📋 เพิ่มรายการ — <span id="formBranch"></span></div>
+          <div class="cHead"><span id="leftCardTitle">📋 เพิ่มรายการ</span> — <span id="formBranch"></span></div>
           <div class="cBody">
+            <div id="recvSearchBox" style="display:none">
+              <div class="row">
+                <span class="lbl">🔍 ค้นหาสินค้าที่รอรับ</span>
+                <div class="sWrap">
+                  <span class="sIco">🔍</span>
+                  <input type="text" id="recvSearchInput" placeholder="พิมพ์ชื่อยา / รหัส..." autocomplete="off" oninput="filterRecvList()">
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--mut);margin-top:6px">💡 พิมพ์เพื่อกรองรายการในหน้ารอของทางขวา</div>
+            </div>
+            <div id="addItemBox">
             <div class="row"><span class="lbl">วันที่สั่ง</span><input type="date" id="orderDate"></div>
             <div class="divider"></div>
             <div class="row">
@@ -257,6 +268,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
                 <button class="btn btnWarn" onclick="addCustom()">➕ เพิ่มรายการนี้</button>
               </div>
             </details>
+            </div>
           </div>
         </div>
       </div>
@@ -268,6 +280,17 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
             <div class="statusTabs" id="statusTabs">
               <button class="stTab active" data-st="รอสั่ง" onclick="setStatusFilter(&#39;รอสั่ง&#39;)">📝 รอสั่ง<span class="stcnt" id="cntWait">0</span></button>
               <button class="stTab" data-st="รอของ" onclick="setStatusFilter(&#39;รอของ&#39;)">📦 รอของ<span class="stcnt" id="cntOrdered">0</span></button>
+            </div>
+            <div id="recvScanArea" style="display:none;margin-bottom:10px">
+              <div style="background:#000;border-radius:8px;overflow:hidden;position:relative">
+                <video id="recvScanVideo" style="width:100%;max-height:200px;display:block" playsinline=""></video>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;height:2px;background:rgba(124,58,237,.8);box-shadow:0 0 8px #7c3aed"></div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <input type="text" id="recvBcInput" placeholder="สแกน/พิมพ์ barcode แล้ว Enter (รับของอัตโนมัติ)..." style="flex:1;font-size:13px" onkeydown="if(event.key===&#39;Enter&#39;)handleRecvBcInput()">
+                <button class="btn btnOut btn-sm" onclick="closeRecvScan()">✕ ปิด</button>
+              </div>
+              <div style="font-size:11px;color:var(--mut);margin-top:4px">💡 สแกนยาที่ของมาถึง ระบบจะกดรับของให้อัตโนมัติ</div>
             </div>
             <div id="orderBody"></div>
           </div>
@@ -336,7 +359,38 @@ let dropItems=[], dropIdx=-1;
 let histCtx=null; // {branch, code} for change-supplier context
 let statusFilter='รอสั่ง'; // current status tab
 const REORDER_DAYS=3; // days before ตามของ allowed
-function setStatusFilter(s){statusFilter=s;document.querySelectorAll('.stTab').forEach(t=>t.classList.toggle('active',t.getAttribute('data-st')===s));renderOrder();}
+function setStatusFilter(s){
+  statusFilter=s;
+  if(typeof closeRecvScan==='function')closeRecvScan();
+  document.querySelectorAll('.stTab').forEach(t=>t.classList.toggle('active',t.getAttribute('data-st')===s));
+  updateLeftCard();
+  renderOrder();
+}
+function updateLeftCard(){
+  const isWait=statusFilter==='รอของ';
+  const addBox=document.getElementById('addItemBox');
+  const recvBox=document.getElementById('recvSearchBox');
+  const title=document.getElementById('leftCardTitle');
+  if(addBox) addBox.style.display=isWait?'none':'block';
+  if(recvBox) recvBox.style.display=isWait?'block':'none';
+  if(title) title.textContent=isWait?'🔍 ค้นหาสินค้าที่รอรับ':'📋 เพิ่มรายการ';
+  if(isWait){ const ri=document.getElementById('recvSearchInput'); if(ri) ri.value=''; }
+}
+function filterRecvList(){
+  const q=(document.getElementById('recvSearchInput').value||'').trim().toLowerCase();
+  const rows=document.querySelectorAll('#orderBody .iRow');
+  rows.forEach(r=>{
+    const nameEl=r.querySelector('.iName');
+    const metaEl=r.querySelector('.iMeta');
+    const txt=((nameEl?nameEl.textContent:'')+' '+(metaEl?metaEl.textContent:'')).toLowerCase();
+    r.style.display=(!q||txt.includes(q))?'':'none';
+  });
+  // hide supplier sections that have no visible rows
+  document.querySelectorAll('#orderBody .supSec').forEach(sec=>{
+    const visible=Array.from(sec.querySelectorAll('.iRow')).some(r=>r.style.display!=='none');
+    sec.style.display=visible?'':'none';
+  });
+}
 
 document.getElementById('orderDate').value=new Date().toISOString().split('T')[0];
 renderBS();
@@ -363,6 +417,8 @@ function enterApp(){
   document.getElementById('hBranch').textContent=isOwner?'👑 เจ้าของ':curBranch;
   if(isOwner){viewBranch=BRANCHES[0];renderOTabs();}
   updateLabels();
+  statusFilter='รอสั่ง';
+  if(typeof updateLeftCard==='function')updateLeftCard();
   // Load pending items from Sheets
   const branchesToLoad=isOwner?BRANCHES:[curBranch];
   renderOrder();
@@ -1091,6 +1147,15 @@ function handleDel(el){
 }
 function renderOrder(){
   const vb=isOwner?viewBranch:curBranch;
+  // Dedupe: remove duplicate items (same rowId, or same code+status if no rowId)
+  if(orders[vb]&&orders[vb].length){
+    const seen=new Set();
+    orders[vb]=orders[vb].filter(it=>{
+      const key=it.rowId?('r:'+it.rowId):('c:'+it.code+':'+(it.status||'รอสั่ง'));
+      if(seen.has(key))return false;
+      seen.add(key);return true;
+    });
+  }
   const all=(orders[vb]||[]);
   // Count by status
   const waitOrder=all.filter(i=>(i.status||'รอสั่ง')==='รอสั่ง');
@@ -1115,7 +1180,11 @@ function renderOrder(){
   const isWaitGoods=statusFilter==='รอของ';
   let html=`<div class="sBar"><span>📦 <b>${sc}</b> บริษัท</span><span>💊 <b>${shown.length}</b> รายการ</span>`;
   if(isWaitGoods){
-    html+=`<span style="margin-left:auto"><button class="btnSm btnRecvAll" onclick="receiveAll('${ea(vb)}')">✅ รับของแล้วทั้งหมด</button></span>`;
+    html+=`<span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btnSm" style="background:#7c3aed;color:#fff;border:none" onclick="openRecvScan('camera')">📷 สแกนกล้อง</button>
+      <button class="btnSm" style="background:#1a56a0;color:#fff;border:none" onclick="openRecvScan('usb')">🔫 เครื่องสแกน/พิมพ์</button>
+      <button class="btnSm btnRecvAll" onclick="receiveAll('${ea(vb)}')">✅ รับของแล้วทั้งหมด</button>
+    </span>`;
   }
   html+=`</div>`;
   Object.keys(grouped).forEach(sup=>{
@@ -1172,6 +1241,8 @@ function renderOrder(){
   document.getElementById('totBadge').textContent=shown.length;
   document.getElementById('totItems').textContent=shown.length;
   document.getElementById('totSup').textContent=sc;
+  // re-apply receive-search filter if active
+  if(statusFilter==='รอของ'){const ri=document.getElementById('recvSearchInput'); if(ri&&ri.value.trim())filterRecvList();}
 }
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -1358,6 +1429,106 @@ function handleBarcode(bc){
     document.getElementById('si').dispatchEvent(new Event('input'));
     toast('⚠️ ไม่พบ barcode '+bc+' ในระบบ');
   }
+}
+
+// ── RECEIVE SCANNER (รอของ tab) ──
+let recvStream=null, recvInterval=null;
+
+function openRecvScan(mode){
+  document.getElementById('recvScanArea').style.display='block';
+  document.getElementById('recvBcInput').value='';
+  const videoBox=document.getElementById('recvScanVideo').parentElement;
+  if(mode==='usb'){
+    stopRecvCamera();
+    videoBox.style.display='none';
+    setTimeout(()=>document.getElementById('recvBcInput').focus(),100);
+  } else {
+    videoBox.style.display='block';
+    startRecvCamera();
+  }
+}
+function closeRecvScan(){
+  stopRecvCamera();
+  document.getElementById('recvScanArea').style.display='none';
+}
+function stopRecvCamera(){
+  if(recvStream){recvStream.getTracks().forEach(t=>t.stop());recvStream=null;}
+  if(recvInterval){clearInterval(recvInterval);recvInterval=null;}
+  const v=document.getElementById('recvScanVideo');
+  if(v) v.srcObject=null;
+}
+async function startRecvCamera(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
+    });
+    recvStream=stream;
+    const v=document.getElementById('recvScanVideo');
+    v.srcObject=stream;
+    await v.play();
+    if('BarcodeDetector' in window){
+      const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39']});
+      recvInterval=setInterval(async()=>{
+        try{
+          const barcodes=await detector.detect(v);
+          if(barcodes.length>0){ handleRecvBarcode(barcodes[0].rawValue); }
+        }catch(e){}
+      },600);
+    } else {
+      toast('เบราว์เซอร์ไม่รองรับ auto-detect — พิมพ์เลขในช่อง');
+    }
+  }catch(e){
+    toast('เปิดกล้องไม่ได้: '+e.message);
+    stopRecvCamera();
+  }
+}
+function handleRecvBcInput(){
+  const inp=document.getElementById('recvBcInput');
+  const bc=inp.value.trim();
+  if(!bc)return;
+  inp.value='';
+  handleRecvBarcode(bc);
+  inp.focus(); // keep focus for next scan
+}
+function handleRecvBarcode(bc){
+  const clean=bc.replace(/[^0-9]/g,'');
+  const code=(BC.bc&&(BC.bc[bc]||BC.bc[clean]));
+  const vb=isOwner?viewBranch:curBranch;
+  if(!code||!CAT[code]){
+    toast('⚠️ ไม่พบ barcode '+bc);
+    return;
+  }
+  // Find item in รอของ for this branch
+  const item=(orders[vb]||[]).find(i=>i.code===code&&i.status==='รอของ');
+  if(!item){
+    toast('⚠️ '+CAT[code].n+' ไม่ได้อยู่ในรายการรอของ');
+    return;
+  }
+  // Auto-receive
+  orders[vb]=orders[vb].filter(i=>i!==item);
+  if(item.rowId) sheetReceived(vb,item.rowId);
+  toast('📥 รับของแล้ว: '+item.name);
+  // Update DOM in-place: remove that row
+  const rows=document.querySelectorAll('#orderBody .iRow');
+  rows.forEach(r=>{
+    if(r.getAttribute('data-code')===code){
+      const supSec=r.closest('.supSec');
+      r.style.transition='opacity .25s';r.style.opacity='0';
+      setTimeout(()=>{
+        r.remove();
+        if(supSec&&!supSec.querySelector('.iRow')) supSec.remove();
+        else if(supSec){
+          const cnt=supSec.querySelectorAll('.iRow').length;
+          const ce=supSec.querySelector('.supCnt');if(ce)ce.textContent=cnt+' รายการ';
+        }
+        updateOrderBarCounts(vb);
+      },250);
+    }
+  });
+  // Update counters
+  const all=(orders[vb]||[]);
+  const co=document.getElementById('cntOrdered');
+  if(co) co.textContent=all.filter(i=>i.status==='รอของ').length;
 }
 
 // ── TOAST ──
