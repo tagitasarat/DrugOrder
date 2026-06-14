@@ -359,7 +359,19 @@ let selDrug=null, pinBuf='';
 let dropItems=[], dropIdx=-1;
 let histCtx=null; // {branch, code} for change-supplier context
 let statusFilter='รอสั่ง'; // current status tab
+let isLoading=false; // true while initial Sheets load in progress (locks add input)
 const REORDER_DAYS=3; // days before ตามของ allowed
+function setAddLock(lock){
+  // Disable/enable the add-item search + buttons while data loads (prevents dup race)
+  const ids=['si','noteInput','cName','cSup','cUnit','cNote'];
+  ids.forEach(id=>{const el=document.getElementById(id); if(el) el.disabled=lock;});
+  const si=document.getElementById('si');
+  if(si) si.placeholder=lock?'⏳ กำลังโหลดข้อมูล... รอสักครู่':'ชื่อ / รหัส / บริษัท / generic...';
+  // grey out the add buttons
+  document.querySelectorAll('#addItemBox button').forEach(b=>{
+    b.disabled=lock; b.style.opacity=lock?'0.5':''; b.style.pointerEvents=lock?'none':'';
+  });
+}
 function setStatusFilter(s){
   statusFilter=s;
   if(typeof closeRecvScan==='function')closeRecvScan();
@@ -420,6 +432,9 @@ function enterApp(){
   updateLabels();
   statusFilter='รอสั่ง';
   if(typeof updateLeftCard==='function')updateLeftCard();
+  // Lock add-item input until data finishes loading (prevents race-condition duplicates)
+  isLoading=true;
+  setAddLock(true);
   // Load pending items from Sheets
   const branchesToLoad=isOwner?BRANCHES:[curBranch];
   renderOrder();
@@ -456,10 +471,15 @@ function enterApp(){
       }
     }).catch(err=>console.warn('load failed for '+b, err))
   )).then(()=>{
+    isLoading=false;
+    setAddLock(false);
     if(isOwner)renderOTabs();
     renderOrder();
     const total=branchesToLoad.reduce((s,b)=>s+(orders[b]||[]).length,0);
     toast(total>0?'✓ โหลด '+total+' รายการแล้ว':'✓ ไม่มีรายการรอสั่ง');
+  }).catch(()=>{
+    isLoading=false;
+    setAddLock(false);
   });
 }
 
@@ -708,6 +728,7 @@ function doReorder(code, branch){
 }
 
 function addFromDB(){
+  if(isLoading){toast('⏳ กำลังโหลดข้อมูล รอสักครู่');return;}
   if(!selDrug)return;
   const note=document.getElementById('noteInput').value.trim();
   const b=activeBranch();
@@ -730,6 +751,7 @@ function addFromDB(){
 document.getElementById('noteInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addFromDB();}});
 
 function addCustom(){
+  if(isLoading){toast('⏳ กำลังโหลดข้อมูล รอสักครู่');return;}
   const name=document.getElementById('cName').value.trim();
   if(!name){toast('กรุณาใส่ชื่อยา');return;}
   const sup=document.getElementById('cSup').value.trim()||'ไม่ทราบบริษัท';
