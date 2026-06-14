@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/acer/Downloads/drug_order_40.html -->
-<html lang="th"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
+<html lang="th">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ระบบสั่งยา – พระจันทร์เภสัช</title>
-<link href="./index_files/css2" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f0f4f8;--w:#fff;--pri:#1a56a0;--pli:#e8f0fb;--acc:#e63946;--grn:#2d9b4e;--bdr:#d1dce8;--txt:#1a2433;--mut:#6b7f96;--rad:12px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -165,7 +165,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
     <div class="bsLogo">🏥</div>
     <div class="bsTitle">พระจันทร์เภสัช</div>
     <div class="bsSub">เลือกสาขาเพื่อเริ่มใช้งาน</div>
-    <div class="bsList" id="bsList"><button class="bsBtn" onclick="pickBranch(&#39;สาขา 1&#39;)"><span>🏪</span>สาขา 1</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 2&#39;)"><span>🏪</span>สาขา 2</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 3&#39;)"><span>🏪</span>สาขา 3</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 4&#39;)"><span>🏪</span>สาขา 4</button><button class="bsBtn" onclick="pickBranch(&#39;สาขา 5&#39;)"><span>🏪</span>สาขา 5</button></div>
+    <div class="bsList" id="bsList"></div>
     <button class="ownerLink" onclick="openPin()">🔐 เจ้าของ / ดูทุกสาขา</button>
   </div>
 </div>
@@ -178,11 +178,11 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
       <div class="pinDot" id="pd2"></div><div class="pinDot" id="pd3"></div>
     </div>
     <div class="pinPad">
-      <button class="pinKey" onclick="pk(&#39;1&#39;)">1</button><button class="pinKey" onclick="pk(&#39;2&#39;)">2</button><button class="pinKey" onclick="pk(&#39;3&#39;)">3</button>
-      <button class="pinKey" onclick="pk(&#39;4&#39;)">4</button><button class="pinKey" onclick="pk(&#39;5&#39;)">5</button><button class="pinKey" onclick="pk(&#39;6&#39;)">6</button>
-      <button class="pinKey" onclick="pk(&#39;7&#39;)">7</button><button class="pinKey" onclick="pk(&#39;8&#39;)">8</button><button class="pinKey" onclick="pk(&#39;9&#39;)">9</button>
+      <button class="pinKey" onclick="pk('1')">1</button><button class="pinKey" onclick="pk('2')">2</button><button class="pinKey" onclick="pk('3')">3</button>
+      <button class="pinKey" onclick="pk('4')">4</button><button class="pinKey" onclick="pk('5')">5</button><button class="pinKey" onclick="pk('6')">6</button>
+      <button class="pinKey" onclick="pk('7')">7</button><button class="pinKey" onclick="pk('8')">8</button><button class="pinKey" onclick="pk('9')">9</button>
       <button class="pinKey" style="font-size:11px;color:var(--mut)" onclick="closePin()">ยกเลิก</button>
-      <button class="pinKey" onclick="pk(&#39;0&#39;)">0</button>
+      <button class="pinKey" onclick="pk('0')">0</button>
       <button class="pinKey" style="color:var(--acc)" onclick="pkDel()">⌫</button>
     </div>
     <div class="pinErr" id="pinErr"></div>
@@ -227,19 +227,20 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
                 <div class="drop" id="drop"></div>
               </div>
               <div style="display:flex;gap:6px;margin-top:6px">
-                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan(&#39;camera&#39;)">📷 Scan กล้อง</button>
-                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan(&#39;manual&#39;)">🔢 พิมพ์ Barcode</button>
+                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan('camera')">📷 Scan กล้อง</button>
+                <button class="btn btnOut" style="flex:1;padding:7px;font-size:12px" onclick="openScan('manual')">🔢 พิมพ์ Barcode</button>
               </div>
             </div>
 
             <!-- SCANNER AREA -->
             <div id="scanArea" style="display:none;margin-bottom:10px">
               <div style="background:#000;border-radius:8px;overflow:hidden;position:relative">
-                <video id="scanVideo" style="width:100%;max-height:200px;display:block" playsinline=""></video>
+                <video id="scanVideo" style="width:100%;max-height:200px;display:block" playsinline></video>
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;height:2px;background:rgba(255,80,80,.8);box-shadow:0 0 8px red"></div>
               </div>
               <div style="display:flex;gap:6px;margin-top:6px">
-                <input type="text" id="bcInput" placeholder="หรือพิมพ์ barcode แล้วกด Enter..." style="flex:1;font-size:13px" onkeydown="if(event.key===&#39;Enter&#39;)handleBcInput()">
+                <input type="text" id="bcInput" placeholder="หรือพิมพ์ barcode แล้วกด Enter..." style="flex:1;font-size:13px"
+                  onkeydown="if(event.key==='Enter')handleBcInput()">
                 <button class="btn btnOut btn-sm" onclick="closeScan()">✕ ปิด</button>
               </div>
             </div>
@@ -278,16 +279,16 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
           <div class="cHead">🛒 รายการสั่งยา — <span id="orderBranch"></span><span class="badge" id="totBadge">0</span></div>
           <div class="cBody">
             <div class="statusTabs" id="statusTabs">
-              <button class="stTab active" data-st="รอสั่ง" onclick="setStatusFilter(&#39;รอสั่ง&#39;)">📝 รอสั่ง<span class="stcnt" id="cntWait">0</span></button>
-              <button class="stTab" data-st="รอของ" onclick="setStatusFilter(&#39;รอของ&#39;)">📦 รอของ<span class="stcnt" id="cntOrdered">0</span></button>
+              <button class="stTab active" data-st="รอสั่ง" onclick="setStatusFilter('รอสั่ง')">📝 รอสั่ง<span class="stcnt" id="cntWait">0</span></button>
+              <button class="stTab" data-st="รอของ" onclick="setStatusFilter('รอของ')">📦 รอของ<span class="stcnt" id="cntOrdered">0</span></button>
             </div>
             <div id="recvScanArea" style="display:none;margin-bottom:10px">
               <div style="background:#000;border-radius:8px;overflow:hidden;position:relative">
-                <video id="recvScanVideo" style="width:100%;max-height:200px;display:block" playsinline=""></video>
+                <video id="recvScanVideo" style="width:100%;max-height:200px;display:block" playsinline></video>
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;height:2px;background:rgba(124,58,237,.8);box-shadow:0 0 8px #7c3aed"></div>
               </div>
               <div style="display:flex;gap:6px;margin-top:6px">
-                <input type="text" id="recvBcInput" placeholder="สแกน/พิมพ์ barcode แล้ว Enter (รับของอัตโนมัติ)..." style="flex:1;font-size:13px" onkeydown="if(event.key===&#39;Enter&#39;)handleRecvBcInput()">
+                <input type="text" id="recvBcInput" placeholder="สแกน/พิมพ์ barcode แล้ว Enter (รับของอัตโนมัติ)..." style="flex:1;font-size:13px" onkeydown="if(event.key==='Enter')handleRecvBcInput()">
                 <button class="btn btnOut btn-sm" onclick="closeRecvScan()">✕ ปิด</button>
               </div>
               <div style="font-size:11px;color:var(--mut);margin-top:4px">💡 สแกนยาที่ของมาถึง ระบบจะกดรับของให้อัตโนมัติ</div>
@@ -315,7 +316,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 <!-- HISTORY / CHANGE SUP MODAL -->
 <div class="mOver noPrint" id="histModal">
   <div class="mBox">
-    <div class="mHead"><span class="mTitle" id="histTitle">📦 ประวัติรับยา</span><button class="mClose" onclick="closeModal(&#39;histModal&#39;)">✕</button></div>
+    <div class="mHead"><span class="mTitle" id="histTitle">📦 ประวัติรับยา</span><button class="mClose" onclick="closeModal('histModal')">✕</button></div>
     <div class="mBody" id="histBody"></div>
   </div>
 </div>
@@ -327,7 +328,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
       <span class="mTitle">📄 สรุปใบสั่งยา</span>
       <div style="display:flex;gap:7px;align-items:center">
         <button class="btnSm btnCopy" onclick="window.print()">🖨️ พิมพ์</button>
-        <button class="mClose" onclick="closeModal(&#39;printModal&#39;)">✕</button>
+        <button class="mClose" onclick="closeModal('printModal')">✕</button>
       </div>
     </div>
     <div class="mBody" id="printBody"></div>
@@ -337,7 +338,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 <!-- LOG MODAL -->
 <div class="mOver noPrint" id="logModal">
   <div class="mBox" style="max-width:720px">
-    <div class="mHead"><span class="mTitle">✅ ประวัติสั่งซื้อ</span><button class="mClose" onclick="closeModal(&#39;logModal&#39;)">✕</button></div>
+    <div class="mHead"><span class="mTitle">✅ ประวัติสั่งซื้อ</span><button class="mClose" onclick="closeModal('logModal')">✕</button></div>
     <div class="mBody" id="logBody"></div>
   </div>
 </div>
@@ -785,74 +786,17 @@ function markOrderedInPlace(b,code,btnEl){
   const item=orders[b].find(i=>i.code===code);if(!item)return;
   item.status='รอของ';
   item.orderedAt=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
-  // Sync to Sheets
   if(item.rowId) sheetOrdered(b,item.rowId);
-  // Update counter badges
-  const all=(orders[b]||[]);
-  document.getElementById('cntWait').textContent=all.filter(i=>(i.status||'รอสั่ง')==='รอสั่ง').length;
-  document.getElementById('cntOrdered').textContent=all.filter(i=>i.status==='รอของ').length;
-  // Find the row + its supplier section
-  const row=btnEl.closest('.iRow');
-  const supSec=btnEl.closest('.supSec');
   toast('📦 สั่งแล้ว: '+item.name);
-  if(row){
-    row.style.transition='opacity .25s';
-    row.style.opacity='0';
-    setTimeout(()=>{
-      row.remove();
-      // If supplier section now has no rows left, remove the whole section
-      if(supSec && !supSec.querySelector('.iRow')){
-        supSec.style.transition='opacity .25s';
-        supSec.style.opacity='0';
-        setTimeout(()=>{
-          supSec.remove();
-          updateOrderBarCounts(b);
-        },250);
-      } else {
-        // update the supplier's count badge
-        if(supSec){
-          const cnt=supSec.querySelectorAll('.iRow').length;
-          const cntEl=supSec.querySelector('.supCnt');
-          if(cntEl) cntEl.textContent=cnt+' รายการ';
-        }
-        updateOrderBarCounts(b);
-      }
-      if(isOwner)renderOTabs();
-    },250);
-  } else {
-    if(isOwner)renderOTabs();renderOrder();
-  }
+  if(isOwner)renderOTabs();
+  renderOrderKeepScroll();
 }
 
 function removeRowInPlace(b,code,btnEl,dataUpdateFn){
-  // run data update + sheet sync
+  // run data update + sheet sync, then re-render fresh (DOM always matches data)
   dataUpdateFn();
-  // update counters
-  const all=(orders[b]||[]);
-  const cw=document.getElementById('cntWait');
-  const co=document.getElementById('cntOrdered');
-  if(cw) cw.textContent=all.filter(i=>(i.status||'รอสั่ง')==='รอสั่ง').length;
-  if(co) co.textContent=all.filter(i=>i.status==='รอของ').length;
-  const row=btnEl.closest('.iRow');
-  const supSec=btnEl.closest('.supSec');
-  if(row){
-    row.style.transition='opacity .25s';
-    row.style.opacity='0';
-    setTimeout(()=>{
-      row.remove();
-      if(supSec && !supSec.querySelector('.iRow')){
-        supSec.remove();
-      } else if(supSec){
-        const cnt=supSec.querySelectorAll('.iRow').length;
-        const cntEl=supSec.querySelector('.supCnt');
-        if(cntEl) cntEl.textContent=cnt+' รายการ';
-      }
-      updateOrderBarCounts(b);
-      if(isOwner)renderOTabs();
-    },250);
-  } else {
-    if(isOwner)renderOTabs();renderOrder();
-  }
+  if(isOwner)renderOTabs();
+  renderOrderKeepScroll();
 }
 
 function updateOrderBarCounts(b){
@@ -1145,6 +1089,16 @@ function handleDel(el){
     if(item&&item.rowId) sheetDelete(branch,item.rowId);
   });
 }
+function renderOrderKeepScroll(){
+  // Capture scroll position of the page + order body, re-render, restore
+  const sc=window.scrollY;
+  const ob=document.getElementById('orderBody');
+  const obTop=ob?ob.getBoundingClientRect().top:0;
+  renderOrder();
+  // restore window scroll
+  window.scrollTo(0,sc);
+}
+
 function renderOrder(){
   const vb=isOwner?viewBranch:curBranch;
   // Dedupe: remove duplicate items (same rowId, or same code+status if no rowId)
@@ -1498,42 +1452,21 @@ function handleRecvBarcode(bc){
     toast('⚠️ ไม่พบ barcode '+bc);
     return;
   }
-  // Find item in รอของ for this branch
   const item=(orders[vb]||[]).find(i=>i.code===code&&i.status==='รอของ');
   if(!item){
     toast('⚠️ '+CAT[code].n+' ไม่ได้อยู่ในรายการรอของ');
     return;
   }
-  // Auto-receive
+  // Auto-receive: update data + sheet, then re-render fresh
   orders[vb]=orders[vb].filter(i=>i!==item);
   if(item.rowId) sheetReceived(vb,item.rowId);
   toast('📥 รับของแล้ว: '+item.name);
-  // Update DOM in-place: remove that row
-  const rows=document.querySelectorAll('#orderBody .iRow');
-  rows.forEach(r=>{
-    if(r.getAttribute('data-code')===code){
-      const supSec=r.closest('.supSec');
-      r.style.transition='opacity .25s';r.style.opacity='0';
-      setTimeout(()=>{
-        r.remove();
-        if(supSec&&!supSec.querySelector('.iRow')) supSec.remove();
-        else if(supSec){
-          const cnt=supSec.querySelectorAll('.iRow').length;
-          const ce=supSec.querySelector('.supCnt');if(ce)ce.textContent=cnt+' รายการ';
-        }
-        updateOrderBarCounts(vb);
-      },250);
-    }
-  });
-  // Update counters
-  const all=(orders[vb]||[]);
-  const co=document.getElementById('cntOrdered');
-  if(co) co.textContent=all.filter(i=>i.status==='รอของ').length;
+  if(isOwner)renderOTabs();
+  renderOrderKeepScroll();
 }
-
 // ── TOAST ──
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 
 </script>
-
-</body></html>
+</body>
+</html>
