@@ -105,8 +105,8 @@ individual entries unless explicitly asked.
 
 ### Backend (Google Apps Script + Google Sheets)
 All persistence goes through one Google Apps Script web-app endpoint stored in
-`SCRIPT_URL` (also hardcoded inside `api()`, `loadFromSheet()`,
-`loadRecentOrdered()` — keep the three in sync if it ever changes).
+the `SCRIPT_URL` constant, which `api()`, `loadFromSheet()`, and
+`loadRecentOrdered()` all reference — change it in that one place.
 
 - Writes: `api(payload)` does `fetch(..., {method:'POST', mode:'no-cors'})`.
   Because of `no-cors`, **responses are opaque** — writes are fire-and-forget;

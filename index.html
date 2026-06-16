@@ -453,9 +453,8 @@ function enterApp(){
   // Load recently ordered items (last 7 days) for duplicate check
   branchesToLoad.forEach(b=>{
     loadRecentOrdered(b).then(items=>{
-      console.log('[loadRecent] branch='+b+' items='+JSON.stringify(items).slice(0,200));
       if(items.length) recentOrdered[b]=items;
-    }).catch(e=>console.log('[loadRecent] error',e));
+    }).catch(e=>console.warn('[loadRecent] error',e));
   });
 
   let loadFailed=false;
@@ -682,11 +681,9 @@ function checkRecentOrder(code, branch){
   const now = new Date();
   const sevenDaysAgo = new Date(now - 7*24*60*60*1000);
   const cache = (recentOrdered[branch]||[]);
-  console.log('[checkRecent] code='+code+' branch='+branch+' cache size='+cache.length);
   const fromCache = cache.find(item=>{
     if(item.code !== code) return false;
     const d = parseThaiDate(item.orderedAt);
-    console.log('[checkRecent] checking item code='+item.code+' orderedAt='+item.orderedAt+' parsed='+d+' ok='+(d&&d>=sevenDaysAgo));
     return d && d >= sevenDaysAgo;
   });
   if(fromCache) return fromCache;
@@ -870,7 +867,7 @@ function updateOrderBarCounts(b){
 }
 
 function api(payload){
-  return fetch('https://script.google.com/macros/s/AKfycbzxbWax1bHeK48CG1h3ecZBO-lMVdx0OW5cF4ooCK_tLDGMa1ox_QVcqdYwg7WRTrcm/exec',{
+  return fetch(SCRIPT_URL,{
     method:'POST',mode:'no-cors',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(payload)
@@ -901,11 +898,11 @@ function sheetQty(branch,rowId,qty){
 }
 
 function loadFromSheet(branch){
-  const url='https://script.google.com/macros/s/AKfycbzxbWax1bHeK48CG1h3ecZBO-lMVdx0OW5cF4ooCK_tLDGMa1ox_QVcqdYwg7WRTrcm/exec?action=load&branch='+encodeURIComponent(branch);
+  const url=SCRIPT_URL+'?action=load&branch='+encodeURIComponent(branch);
   return fetch(url).then(r=>r.json()).catch(()=>({error:true}));
 }
 function loadRecentOrdered(branch){
-  const url='https://script.google.com/macros/s/AKfycbzxbWax1bHeK48CG1h3ecZBO-lMVdx0OW5cF4ooCK_tLDGMa1ox_QVcqdYwg7WRTrcm/exec?action=loadRecent&branch='+encodeURIComponent(branch);
+  const url=SCRIPT_URL+'?action=loadRecent&branch='+encodeURIComponent(branch);
   return fetch(url).then(r=>r.json()).then(d=>d.items||[]).catch(()=>[]);
 }
 function markAllOrdered(b,sup){
