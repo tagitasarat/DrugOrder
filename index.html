@@ -95,6 +95,8 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 .iName{font-weight:500;line-height:1.3}
 .iMeta{font-size:10px;color:var(--mut);margin-top:1px}
 .iNote{font-size:10px;color:#856404;background:#fff3cd;border-radius:4px;padding:1px 5px;margin-top:2px;display:inline-block}
+.addedBadge{font-size:10px;color:var(--mut);background:#f0f4f8;border-radius:4px;padding:1px 6px;margin-top:2px;display:inline-block}
+.addedBadge.old{color:#b45309;background:#ffe8c2;font-weight:600}
 .iBadge{font-size:9px;background:var(--pli);color:var(--pri);padding:1px 5px;border-radius:4px;font-weight:600}
 .iHint{font-size:9px;color:#bbb;margin-top:1px}
 .copyIcon{font-size:11px;cursor:pointer;opacity:.5;margin-left:3px;display:inline-block}
@@ -1231,6 +1233,17 @@ function renderOrderKeepScroll(){
   window.scrollTo(0,sc);
 }
 
+// rowId is generated as Date.now()+'-'+random at add time and is persisted to
+// the sheet, so it doubles as a reliable "added at" timestamp with no backend
+// change needed.
+function itemAddedAt(item){
+  const t=parseInt(item.rowId,10);
+  return (t && t>1e12) ? new Date(t) : null;
+}
+function fmtAdded(d){
+  const p=n=>String(n).padStart(2,'0');
+  return p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
 function renderOrder(){
   const vb=isOwner?viewBranch:curBranch;
   // Dedupe: remove duplicate items (same rowId, or same code+status if no rowId)
@@ -1292,6 +1305,13 @@ function renderOrder(){
       const bKey=vb.replace('สาขา ','');
       const recQty=SALES[it.code]&&SALES[it.code][bKey]?SALES[it.code][bKey]:null;
       const waitInfo=isWaitGoods&&it.orderedAt?`<span class="waitBadge ww">📦 สั่งเมื่อ ${esc(it.orderedAt)}</span>`:'';
+      // "จดเมื่อ" timestamp (รอสั่ง only) so staff/owner see how long it has waited
+      let addedBadge='';
+      const addedD=itemAddedAt(it);
+      if(!isWaitGoods&&addedD){
+        const age=Math.floor((Date.now()-addedD.getTime())/86400000);
+        addedBadge=`<span class="addedBadge${age>=REORDER_DAYS?' old':''}">🕒 จดเมื่อ ${fmtAdded(addedD)}${age>0?' · '+age+' วันก่อน':''}</span>`;
+      }
       // Count other branches with same code in รอสั่ง (owner only, รอสั่ง tab)
       let multiBtn='';
       if(isOwner&&!isWaitGoods){
@@ -1305,6 +1325,7 @@ function renderOrder(){
           <div class="iName">${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''} <span class="copyIcon" data-name="${esc(it.name)}" onclick="event.stopPropagation();copyName(this)" title="คัดลอกชื่อ">📋</span></div>
           <div class="iMeta">${it.custom?'':esc(it.code)} | ${esc(it.unit)}</div>
           ${it.note?`<span class="iNote">📝 ${esc(it.note)}</span>`:''}
+          ${addedBadge}
           ${waitInfo}
           ${multiBtn}
           <div class="iHint">คลิกดูประวัติ / เปลี่ยนบริษัท</div>
