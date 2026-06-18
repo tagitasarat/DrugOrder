@@ -985,24 +985,37 @@ function supplierAcrossBranches(sup){
   });
   return out;
 }
+// Actionable consolidated view: manage a supplier's รอสั่ง items across every
+// branch on one page — set qty, apply the recommendation, tick ordered per item
+// or per branch — without searching each branch separately.
 function openSupplierAllBranches(sup){
   const groups=supplierAcrossBranches(sup);
-  if(!groups.length){toast('ไม่มีรายการ');return;}
+  if(!groups.length){closeModal('histModal');toast('ไม่มีรายการแล้ว');return;}
   const total=groups.reduce((s,g)=>s+g[1].length,0);
-  let body=`<div style="font-size:12px;color:var(--mut);margin-bottom:8px">รวมรายการของบริษัทนี้จากทุกสาขา (${groups.length} สาขา · ${total} รายการ)</div>
+  let body=`<div style="font-size:12px;color:var(--mut);margin-bottom:8px">จัดการรายการของบริษัทนี้จากทุกสาขาในหน้าเดียว (${groups.length} สาขา · ${total} รายการ)</div>
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <button class="btn btnOut" style="flex:1" onclick="copySupplierAll('${ea(sup)}')">📋 Copy รวม</button>
       <button class="btn btnSuc" style="flex:1" onclick="exportSupplierAll('${ea(sup)}')">⬇️ Excel รวม</button>
     </div>`;
   groups.forEach(g=>{
-    const b=g[0], its=g[1];
-    body+=`<div style="margin-bottom:10px">
-      <div style="font-weight:700;font-size:13px;color:var(--pri);border-bottom:1px solid var(--bdr);padding-bottom:3px;margin-bottom:5px">📍 ${esc(b)} <span style="color:var(--mut);font-weight:400">(${its.length})</span></div>`;
+    const b=g[0], its=g[1], bKey=b.replace('สาขา ','');
+    body+=`<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bdr);padding-bottom:3px;margin-bottom:5px">
+        <span style="font-weight:700;font-size:13px;color:var(--pri)">📍 ${esc(b)} <span style="color:var(--mut);font-weight:400">(${its.length})</span></span>
+        <button class="btnSm btnOrdAll" onclick="supAllMarkBranch('${ea(b)}','${ea(sup)}')">✅ สั่งหมดสาขานี้</button>
+      </div>`;
     its.forEach(it=>{
-      const qtyTxt=it.qty!=null?esc(String(it.qty))+' '+esc(it.unit):'<span style=\'color:var(--acc)\'>ยังไม่ใส่จำนวน</span>';
-      body+=`<div style="font-size:13px;padding:3px 0;display:flex;justify-content:space-between;gap:8px">
-        <span>${esc(it.name)}${it.custom?'':' <span style=\'color:var(--mut);font-size:11px\'>'+esc(it.code)+'</span>'}${it.note?' <span style=\'color:var(--mut)\'>📝'+esc(it.note)+'</span>':''}</span>
-        <span style="white-space:nowrap;font-weight:600">${qtyTxt}</span>
+      const rec=SALES[it.code]&&SALES[it.code][bKey]?SALES[it.code][bKey]:null;
+      const qtyVal=it.qty!=null?it.qty:'';
+      body+=`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #f5f7fa">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px">${esc(it.name)}</div>
+          <div style="font-size:10px;color:var(--mut)">${it.custom?'':esc(it.code)+' · '}${esc(it.unit)}${it.note?' · 📝'+esc(it.note):''}</div>
+          ${it.ownerNote?`<div class="ownerNoteRow">👑 ${esc(it.ownerNote)}</div>`:''}
+        </div>
+        <input class="qtyInput" type="number" min="1" placeholder="จำนวน" value="${qtyVal}" style="width:62px" onchange="supAllSetQty('${ea(b)}','${ea(it.code)}',this.value)">
+        ${rec?`<button class="recBadge" onclick="supAllUseRec('${ea(b)}','${ea(it.code)}',${rec},'${ea(sup)}')">แนะนำ ${rec}</button>`:''}
+        <button class="btnSm btnOrd" title="สั่งแล้ว" onclick="supAllMarkOrdered('${ea(b)}','${ea(it.code)}','${ea(sup)}')">✅</button>
       </div>`;
     });
     body+=`</div>`;
@@ -1010,6 +1023,34 @@ function openSupplierAllBranches(sup){
   document.getElementById('histTitle').textContent='🔀 '+sup+' — รวมทุกสาขา';
   document.getElementById('histBody').innerHTML=body;
   document.getElementById('histModal').classList.add('open');
+}
+// In-modal actions; each keeps the underlying list in sync and refreshes the modal.
+function supAllSetQty(branch,code,val){
+  const item=(orders[branch]||[]).find(i=>i.code===code);if(!item)return;
+  item.qty=parseInt(val)||null;
+  if(item.rowId) sheetQty(branch,item.rowId,item.qty);
+  renderOrder();
+}
+function supAllUseRec(branch,code,rec,sup){
+  const item=(orders[branch]||[]).find(i=>i.code===code);if(!item)return;
+  item.qty=rec;
+  if(item.rowId) sheetQty(branch,item.rowId,rec);
+  renderOrder();
+  openSupplierAllBranches(sup);
+}
+function supAllMarkOrdered(branch,code,sup){
+  const item=(orders[branch]||[]).find(i=>i.code===code&&(i.status||'รอสั่ง')==='รอสั่ง');if(!item)return;
+  item.status='รอของ';
+  item.orderedAt=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  if(item.rowId) sheetOrdered(branch,item.rowId);
+  if(isOwner)renderOTabs();
+  renderOrder();
+  toast('📦 สั่งแล้ว: '+item.name+' ('+branch+')');
+  openSupplierAllBranches(sup);
+}
+function supAllMarkBranch(branch,sup){
+  markAllOrdered(branch,sup);
+  openSupplierAllBranches(sup);
 }
 function copySupplierAll(sup){
   const groups=supplierAcrossBranches(sup);
