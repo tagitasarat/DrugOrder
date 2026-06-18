@@ -910,7 +910,8 @@ function markAllOrdered(b,sup){
     i.status='รอของ';i.orderedAt=ts;
     if(i.rowId) sheetOrdered(b,i.rowId);
   });
-  if(isOwner)renderOTabs();renderOrder();
+  if(isOwner)renderOTabs();
+  renderOrderKeepScroll();
   toast('📦 สั่งแล้ว '+its.length+' รายการ');
 }
 
@@ -949,20 +950,82 @@ function copySupplier(b,sup){
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const lines=['บริษัท: '+sup,'สาขา: '+b,'วันที่: '+date,'---'];
-  items.forEach((it,i)=>lines.push((i+1)+'. '+it.name+(it.code&&!it.custom?' ('+it.code+')':'')+' ['+it.unit+']'+(it.note?' — '+it.note:'')));
+  items.forEach((it,i)=>lines.push((i+1)+'. '+it.name+(it.code&&!it.custom?' ('+it.code+')':'')+' ['+it.unit+']'+(it.qty?' จำนวน '+it.qty:'')+(it.note?' — '+it.note:'')));
   navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy แล้ว ('+items.length+' รายการ)'));
 }
 function exportSupplier(b,sup){
   const items=orders[b].filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')===statusFilter);
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
-  const rows=[['ลำดับ','รหัส','ชื่อยา','หน่วย','หมายเหตุ','สาขา','วันที่']];
-  items.forEach((it,i)=>rows.push([i+1,it.code||'-',it.name,it.unit,it.note||'',b,date]));
+  const rows=[['ลำดับ','รหัส','ชื่อยา','หน่วย','จำนวน','หมายเหตุ','สาขา','วันที่']];
+  items.forEach((it,i)=>rows.push([i+1,it.code||'-',it.name,it.unit,it.qty!=null?it.qty:'',it.note||'',b,date]));
   const csv='\uFEFF'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   a.download='สั่งยา_'+sup+'_'+b+'_'+date+'.csv';
   a.click();toast('⬇️ Export แล้ว');
+}
+
+// ── SUPPLIER ACROSS ALL BRANCHES (owner) ──
+// Collect a supplier's items from every branch for the current status tab.
+function supplierAcrossBranches(sup){
+  const out=[];
+  BRANCHES.forEach(b=>{
+    const its=(orders[b]||[]).filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')===statusFilter);
+    if(its.length) out.push([b,its]);
+  });
+  return out;
+}
+function openSupplierAllBranches(sup){
+  const groups=supplierAcrossBranches(sup);
+  if(!groups.length){toast('ไม่มีรายการ');return;}
+  const total=groups.reduce((s,g)=>s+g[1].length,0);
+  let body=`<div style="font-size:12px;color:var(--mut);margin-bottom:8px">รวมรายการของบริษัทนี้จากทุกสาขา (${groups.length} สาขา · ${total} รายการ)</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btnOut" style="flex:1" onclick="copySupplierAll('${ea(sup)}')">📋 Copy รวม</button>
+      <button class="btn btnSuc" style="flex:1" onclick="exportSupplierAll('${ea(sup)}')">⬇️ Excel รวม</button>
+    </div>`;
+  groups.forEach(g=>{
+    const b=g[0], its=g[1];
+    body+=`<div style="margin-bottom:10px">
+      <div style="font-weight:700;font-size:13px;color:var(--pri);border-bottom:1px solid var(--bdr);padding-bottom:3px;margin-bottom:5px">📍 ${esc(b)} <span style="color:var(--mut);font-weight:400">(${its.length})</span></div>`;
+    its.forEach(it=>{
+      const qtyTxt=it.qty!=null?esc(String(it.qty))+' '+esc(it.unit):'<span style=\'color:var(--acc)\'>ยังไม่ใส่จำนวน</span>';
+      body+=`<div style="font-size:13px;padding:3px 0;display:flex;justify-content:space-between;gap:8px">
+        <span>${esc(it.name)}${it.custom?'':' <span style=\'color:var(--mut);font-size:11px\'>'+esc(it.code)+'</span>'}${it.note?' <span style=\'color:var(--mut)\'>📝'+esc(it.note)+'</span>':''}</span>
+        <span style="white-space:nowrap;font-weight:600">${qtyTxt}</span>
+      </div>`;
+    });
+    body+=`</div>`;
+  });
+  document.getElementById('histTitle').textContent='🔀 '+sup+' — รวมทุกสาขา';
+  document.getElementById('histBody').innerHTML=body;
+  document.getElementById('histModal').classList.add('open');
+}
+function copySupplierAll(sup){
+  const groups=supplierAcrossBranches(sup);
+  if(!groups.length){toast('ไม่มีรายการ');return;}
+  const date=document.getElementById('orderDate').value;
+  const lines=['บริษัท: '+sup,'วันที่: '+date];
+  groups.forEach(g=>{
+    lines.push('--- '+g[0]+' ---');
+    g[1].forEach((it,i)=>lines.push((i+1)+'. '+it.name+(it.code&&!it.custom?' ('+it.code+')':'')+' ['+it.unit+']'+(it.qty?' จำนวน '+it.qty:'')+(it.note?' — '+it.note:'')));
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy รวมทุกสาขาแล้ว'));
+}
+function exportSupplierAll(sup){
+  const groups=supplierAcrossBranches(sup);
+  if(!groups.length){toast('ไม่มีรายการ');return;}
+  const date=document.getElementById('orderDate').value;
+  const rows=[['สาขา','ลำดับ','รหัส','ชื่อยา','หน่วย','จำนวน','หมายเหตุ','วันที่']];
+  groups.forEach(g=>{
+    g[1].forEach((it,i)=>rows.push([g[0],i+1,it.code||'-',it.name,it.unit,it.qty!=null?it.qty:'',it.note||'',date]));
+  });
+  const csv='\uFEFF'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='สั่งยา_รวมสาขา_'+sup+'_'+date+'.csv';
+  a.click();toast('⬇️ Export รวมทุกสาขาแล้ว');
 }
 
 // ── RENDER ORDER ──
@@ -1080,10 +1143,12 @@ function showMultiBranchOrder(code,curB,otherBranches,btnEl){
     const it=(orders[b]||[]).find(i=>i.code===code&&(i.status||'รอสั่ง')==='รอสั่ง');
     const qty=it&&it.qty?it.qty:'';
     const note=it&&it.note?it.note:'';
+    const bKey=b.replace('สาขา ','');
+    const rec=SALES[code]&&SALES[code][bKey]?SALES[code][bKey]:null;
     body+=`<label class="branchChk">
       <input type="checkbox" value="${esc(b)}" checked>
       <span class="branchChkName">${esc(b)}</span>
-      <span class="branchChkInfo">${qty?'จำนวน '+qty:'<span style=\'color:var(--acc)\'>ยังไม่ใส่จำนวน</span>'}${note?' · '+esc(note):''}</span>
+      <span class="branchChkInfo">${qty?'จำนวน '+qty:'<span style=\'color:var(--acc)\'>ยังไม่ใส่จำนวน</span>'}${rec?' · 💡 แนะนำ '+rec:''}${note?' · '+esc(note):''}</span>
     </label>`;
   });
   body+=`</div>
@@ -1133,12 +1198,36 @@ function handleDel(el){
   });
 }
 function renderOrderKeepScroll(){
-  // Capture scroll position of the page + order body, re-render, restore
-  const sc=window.scrollY;
+  // Anchor on the supplier section nearest the top of the viewport so the list
+  // the user is working in stays put after a row is added/removed/reordered.
+  // (Plain scrollY restore drifts because removing a row shortens the page.)
   const ob=document.getElementById('orderBody');
-  const obTop=ob?ob.getBoundingClientRect().top:0;
+  let anchorKey=null, anchorTop=0;
+  if(ob){
+    ob.querySelectorAll('.supSec').forEach(sec=>{
+      if(anchorKey!==null) return;
+      const r=sec.getBoundingClientRect();
+      if(r.bottom>0){ // first section still (partly) on screen
+        const nm=sec.querySelector('.supName');
+        anchorKey=nm?nm.textContent:'';
+        anchorTop=r.top;
+      }
+    });
+  }
+  const sc=window.scrollY;
   renderOrder();
-  // restore window scroll
+  if(anchorKey){
+    let restored=false;
+    document.querySelectorAll('#orderBody .supSec').forEach(sec=>{
+      if(restored) return;
+      const nm=sec.querySelector('.supName');
+      if(nm&&nm.textContent===anchorKey){
+        window.scrollBy(0, sec.getBoundingClientRect().top-anchorTop);
+        restored=true;
+      }
+    });
+    if(restored) return;
+  }
   window.scrollTo(0,sc);
 }
 
@@ -1193,6 +1282,7 @@ function renderOrder(){
           <span class="supCnt">${its.length} รายการ</span>
           <button class="btnSm btnCopy" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="handleCopy(this)">📋 Copy</button>
           <button class="btnSm btnXl" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="handleXl(this)">⬇️ Excel</button>
+          ${isOwner&&!isWaitGoods?`<button class="btnSm" style="background:#0d9488;color:#fff;border:none" data-s="${esc(sup)}" onclick="openSupplierAllBranches(this.getAttribute('data-s'))">🔀 รวมสาขา</button>`:''}
           ${isOwner&&!isWaitGoods?`<button class="btnLastQty" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="setLastQtyAll(this)">📦 จำนวนล่าสุด</button>`:''}
           ${isOwner&&!isWaitGoods?`<button class="btnSm btnOrdAll" data-b="${esc(vb)}" data-s="${esc(sup)}" onclick="markAllOrdered(this.getAttribute('data-b'),this.getAttribute('data-s'))">✅ สั่งแล้วทั้งหมด</button>`:''}
         </div>
