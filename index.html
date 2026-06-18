@@ -90,6 +90,12 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 .supActs{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
 .supCnt{font-size:10px;color:var(--mut)}
 .iRow{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:start;padding:7px 10px;border-bottom:1px solid #f0f4f8;font-size:12px;cursor:pointer}
+.iRow.hasOwnerNote{background:#faf5ff;border-left:3px solid #7c3aed}
+.ownerNoteRow{font-size:11px;color:#fff;background:#7c3aed;border-radius:5px;padding:2px 7px;margin-top:3px;display:inline-block;font-weight:600;white-space:normal}
+.ownerNoteBox{background:#f3e8ff;border:1px solid #c084fc;border-radius:8px;padding:9px 11px;margin-bottom:12px}
+.ownerNoteLbl{font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:5px}
+.ownerNoteText{font-size:13px;color:#5b21b6;white-space:pre-wrap}
+.ownerNoteTa{width:100%;border:1.5px solid #c084fc;border-radius:7px;padding:7px 9px;font-family:Sarabun,sans-serif;font-size:13px;outline:none;resize:vertical;min-height:48px}
 .iRow:hover{background:#f8fafc}
 .iRow:last-child{border-bottom:none}
 .iName{font-weight:500;line-height:1.3}
@@ -479,6 +485,7 @@ function enterApp(){
             qty:it.qty!=null?Number(it.qty):null,
             status:it.status||'รอสั่ง',
             orderedAt:it.orderedAt||null,
+            ownerNote:it.ownerNote||'',
             sups
           });
         });
@@ -1275,6 +1282,9 @@ function renderOrder(){
   }
   const grouped={};
   shown.forEach(it=>{if(!grouped[it.supplier])grouped[it.supplier]=[];grouped[it.supplier].push(it);});
+  // Pin items/suppliers carrying an owner note to the top so they stand out
+  Object.keys(grouped).forEach(s=>grouped[s].sort((x,y)=>(y.ownerNote?1:0)-(x.ownerNote?1:0)));
+  const supKeys=Object.keys(grouped).sort((a,b)=>(grouped[a].some(i=>i.ownerNote)?0:1)-(grouped[b].some(i=>i.ownerNote)?0:1));
   const sc=Object.keys(grouped).length;
   const isWaitGoods=statusFilter==='รอของ';
   let html=`<div class="sBar"><span>📦 <b>${sc}</b> บริษัท</span><span>💊 <b>${shown.length}</b> รายการ</span>`;
@@ -1286,7 +1296,7 @@ function renderOrder(){
     </span>`;
   }
   html+=`</div>`;
-  Object.keys(grouped).forEach(sup=>{
+  supKeys.forEach(sup=>{
     const its=grouped[sup];
     html+=`<div class="supSec">
       <div class="supHead">
@@ -1320,9 +1330,10 @@ function renderOrder(){
           multiBtn=`<button class="multiBranchBtn" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();openMultiBranch(this)">🔗 +${others.length} สาขา</button>`;
         }
       }
-      html+=`<div class="iRow" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="handleRowClick(this)">
+      html+=`<div class="iRow${it.ownerNote?' hasOwnerNote':''}" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="handleRowClick(this)">
         <div>
           <div class="iName">${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''} <span class="copyIcon" data-name="${esc(it.name)}" onclick="event.stopPropagation();copyName(this)" title="คัดลอกชื่อ">📋</span></div>
+          ${it.ownerNote?`<div class="ownerNoteRow">👑 ${esc(it.ownerNote)}</div>`:''}
           <div class="iMeta">${it.custom?'':esc(it.code)} | ${esc(it.unit)}</div>
           ${it.note?`<span class="iNote">📝 ${esc(it.note)}</span>`:''}
           ${addedBadge}
@@ -1369,6 +1380,23 @@ function showHist(code,branch){
   const unit=item?item.unit:(catD?catD.u:'');
   document.getElementById('histTitle').textContent='📦 '+name;
   let html='';
+  // Owner note: everyone reads it (it's for staff), only the owner edits it
+  if(item){
+    const on=item.ownerNote||'';
+    if(on||isOwner){
+      html+=`<div class="ownerNoteBox"><div class="ownerNoteLbl">👑 โน้ตจากเจ้าของ (ลูกน้องอ่าน)</div>`;
+      if(isOwner){
+        html+=`<textarea id="ownerNoteInput" class="ownerNoteTa" placeholder="เช่น ของขาด ยังไม่ได้สั่ง / สาขาอื่นเหลือเยอะ ไปขอสาขาอื่น">${esc(on)}</textarea>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <button class="btnSm btnPri" onclick="saveOwnerNote()">💾 บันทึกโน้ต</button>
+            ${on?`<button class="btnSm btnOut" onclick="clearOwnerNote()">ลบโน้ต</button>`:''}
+          </div>`;
+      }else{
+        html+=`<div class="ownerNoteText">${esc(on)}</div>`;
+      }
+      html+=`</div>`;
+    }
+  }
   if(!supsArr||!supsArr.length){
     html='<div style="color:var(--mut);font-size:12px;padding:10px">ไม่มีข้อมูลในระบบ</div>';
   }else{
@@ -1405,6 +1433,30 @@ function showHist(code,branch){
   }
   document.getElementById('histBody').innerHTML=html;
   document.getElementById('histModal').classList.add('open');
+}
+
+// ── OWNER NOTE (owner annotates a product for staff to read) ──
+// Front-end is ready; persistence needs the Apps Script backend to store an
+// ownerNote column and return it from action=load (see sheetOwnerNote).
+function saveOwnerNote(){
+  if(!histCtx)return;
+  const ta=document.getElementById('ownerNoteInput');if(!ta)return;
+  const txt=ta.value.trim();
+  const item=(orders[histCtx.branch]||[]).find(i=>i.code===histCtx.code);
+  if(!item)return;
+  item.ownerNote=txt;
+  if(item.rowId) sheetOwnerNote(histCtx.branch,item.rowId,txt);
+  closeModal('histModal');
+  if(isOwner)renderOTabs();
+  renderOrder();
+  toast(txt?'👑 บันทึกโน้ตเจ้าของแล้ว':'ลบโน้ตแล้ว');
+}
+function clearOwnerNote(){
+  const ta=document.getElementById('ownerNoteInput');if(ta)ta.value='';
+  saveOwnerNote();
+}
+function sheetOwnerNote(branch,rowId,ownerNote){
+  return api({action:'ownerNote',branch,rowId,ownerNote}).catch(showSaveError);
 }
 
 function changeSup(newSup){
