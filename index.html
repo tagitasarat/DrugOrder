@@ -472,9 +472,15 @@ function enterApp(){
       // Clear existing orders for this branch before loading from Sheets
       // to prevent duplicates on page reload
       orders[b] = [];
+      ownerNoteRows[b] = {};
+      const onMap = {}; // ownerNote text keyed by product code, from hidden ON rows
       if(res.items&&res.items.length){
         res.items.forEach(it=>{
           const code=String(it.code||'');
+          if(code===ON_CODE){ // hidden owner-note row (no backend change needed)
+            try{const d=JSON.parse(it.note||'{}');if(d&&d.c){onMap[d.c]=d.t||'';ownerNoteRows[b][d.c]=String(it.rowId);}}catch(e){}
+            return;
+          }
           const catD=CAT[code];
           const sups=catD?catD.sups:[{s:String(it.supplier||'ไม่ทราบบริษัท'),h:[]}];
           orders[b].push({
@@ -485,11 +491,12 @@ function enterApp(){
             qty:it.qty!=null?Number(it.qty):null,
             status:it.status||'รอสั่ง',
             orderedAt:it.orderedAt||null,
-            ownerNote:it.ownerNote||'',
+            ownerNote:'',
             sups
           });
         });
       }
+      orders[b].forEach(x=>{if(onMap[x.code]!=null)x.ownerNote=onMap[x.code];});
     }).catch(err=>{loadFailed=true;console.warn('load failed for '+b, err);})
   )).then(()=>{
     isLoading=false;
@@ -665,6 +672,11 @@ function pickDrug(code){
 // ── ADD ──
 // Cache of recently ordered items loaded from Sheets
 let recentOrdered = {}; // {branch: [{code, name, unit, qty, orderedAt}]}
+// Owner notes are persisted as hidden rows (code === ON_CODE) via the existing
+// add/delete actions, so no backend change is needed. ownerNoteRows maps
+// {branch: {productCode: rowIdOfTheHiddenRow}} so we can update/remove them.
+const ON_CODE='__ON__';
+let ownerNoteRows={};
 
 function parseThaiDate(str){
   if(!str) return null;
@@ -1477,8 +1489,8 @@ function showHist(code,branch){
 }
 
 // ── OWNER NOTE (owner annotates a product for staff to read) ──
-// Front-end is ready; persistence needs the Apps Script backend to store an
-// ownerNote column and return it from action=load (see sheetOwnerNote).
+// Persisted as a hidden row (code === ON_CODE) via the existing add/delete
+// actions, so it survives reload and reaches other devices with NO backend change.
 function saveOwnerNote(){
   if(!histCtx)return;
   const ta=document.getElementById('ownerNoteInput');if(!ta)return;
@@ -1486,7 +1498,7 @@ function saveOwnerNote(){
   const item=(orders[histCtx.branch]||[]).find(i=>i.code===histCtx.code);
   if(!item)return;
   item.ownerNote=txt;
-  if(item.rowId) sheetOwnerNote(histCtx.branch,item.rowId,txt);
+  persistOwnerNote(histCtx.branch,item.code,txt);
   closeModal('histModal');
   if(isOwner)renderOTabs();
   renderOrder();
@@ -1496,8 +1508,17 @@ function clearOwnerNote(){
   const ta=document.getElementById('ownerNoteInput');if(ta)ta.value='';
   saveOwnerNote();
 }
-function sheetOwnerNote(branch,rowId,ownerNote){
-  return api({action:'ownerNote',branch,rowId,ownerNote}).catch(showSaveError);
+function persistOwnerNote(branch,code,txt){
+  ownerNoteRows[branch]=ownerNoteRows[branch]||{};
+  const oldRow=ownerNoteRows[branch][code];
+  if(oldRow){ sheetDelete(branch,oldRow); delete ownerNoteRows[branch][code]; }
+  if(txt){
+    const rid=Date.now()+'-on'+Math.random().toString(36).slice(2,7);
+    ownerNoteRows[branch][code]=rid;
+    api({action:'add',branch,rowId:rid,orderDate:document.getElementById('orderDate').value,
+      supplier:ON_CODE,code:ON_CODE,name:code,unit:'-',note:JSON.stringify({c:code,t:txt})
+    }).catch(showSaveError);
+  }
 }
 
 function changeSup(newSup){
