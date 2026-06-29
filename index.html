@@ -702,6 +702,13 @@ function parseThaiDate(str){
   }catch(e){return null;}
 }
 
+// Stable, locale-independent timestamp "DD/MM/YYYY HH:MM" (Gregorian year).
+// Used for every orderedAt/receivedAt so the date always parses back the same
+// way on any device — the root cause of the earlier "0 วันก่อน" bug.
+function nowStamp(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
 function checkRecentOrder(code, branch){
   const now = new Date();
   const sevenDaysAgo = new Date(now - 7*24*60*60*1000);
@@ -851,7 +858,7 @@ function clearBranch(){
 function markOrdered(b,code){
   const item=orders[b].find(i=>i.code===code);if(!item)return;
   item.status='รอของ';
-  item.orderedAt=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  item.orderedAt=nowStamp();
   if(isOwner)renderOTabs();renderOrder();
   toast('📦 สั่งแล้ว (รอของ): '+item.name);
   if(item.rowId) sheetOrdered(b,item.rowId);
@@ -861,7 +868,7 @@ function markOrdered(b,code){
 function markOrderedInPlace(b,code,btnEl){
   const item=orders[b].find(i=>i.code===code);if(!item)return;
   item.status='รอของ';
-  item.orderedAt=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  item.orderedAt=nowStamp();
   if(item.rowId) sheetOrdered(b,item.rowId);
   toast('📦 สั่งแล้ว: '+item.name);
   if(isOwner)renderOTabs();
@@ -924,7 +931,7 @@ function sheetDelete(branch,rowId){
 
 function sheetOrdered(branch,rowId){
   return api({action:'ordered',branch,rowId,
-    orderedAt:new Date().toLocaleString('th-TH')
+    orderedAt:nowStamp()
   }).catch(showSaveError);
 }
 function sheetQty(branch,rowId,qty){
@@ -941,7 +948,7 @@ function loadRecentOrdered(branch){
 }
 function markAllOrdered(b,sup){
   const its=orders[b].filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')==='รอสั่ง');
-  const ts=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  const ts=nowStamp();
   its.forEach(i=>{
     i.status='รอของ';i.orderedAt=ts;
     if(i.rowId) sheetOrdered(b,i.rowId);
@@ -974,7 +981,7 @@ function receiveAll(b){
 }
 
 function sheetReceived(branch,rowId){
-  return api({action:'received',branch,rowId,receivedAt:new Date().toLocaleString('th-TH')}).catch(showSaveError);
+  return api({action:'received',branch,rowId,receivedAt:nowStamp()}).catch(showSaveError);
 }
 function sheetReorder(branch,rowId){
   return api({action:'reorder',branch,rowId}).catch(showSaveError);
@@ -1068,7 +1075,7 @@ function supAllUseRec(branch,code,rec,sup){
 function supAllMarkOrdered(branch,code,sup){
   const item=(orders[branch]||[]).find(i=>i.code===code&&(i.status||'รอสั่ง')==='รอสั่ง');if(!item)return;
   item.status='รอของ';
-  item.orderedAt=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  item.orderedAt=nowStamp();
   if(item.rowId) sheetOrdered(branch,item.rowId);
   if(isOwner)renderOTabs();
   renderOrder();
@@ -1250,7 +1257,7 @@ function confirmMultiBranchOrder(code){
   const branches=Array.from(boxes).map(b=>b.value);
   if(!branches.length){toast('เลือกอย่างน้อย 1 สาขา');return;}
   closeModal('histModal');
-  const ts=new Date().toLocaleDateString('th-TH')+' '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  const ts=nowStamp();
   let cnt=0;
   branches.forEach(b=>{
     const item=(orders[b]||[]).find(i=>i.code===code&&(i.status||'รอสั่ง')==='รอสั่ง');
@@ -1268,10 +1275,16 @@ function confirmMultiBranchOrder(code){
 function handleDel(el){
   const code=el.getAttribute('data-code');
   const branch=el.getAttribute('data-branch');
+  const item=orders[branch].find(i=>i.code===code);
+  // Guard the dangerous mis-tap: deleting an already-ordered (รอของ) item.
+  // If the goods arrived, staff should press 📥 รับของ, not delete.
+  if(item && item.status==='รอของ'){
+    if(!confirm('⚠️ ลบรายการที่ "สั่งไปแล้ว" ออกจากระบบ?\n\nถ้าของมาถึงแล้ว ให้กด 📥 รับของ แทน\nกดลบจะเอารายการออกโดยไม่บันทึกว่ารับของ')) return;
+  }
   removeRowInPlace(branch,code,el,()=>{
-    const item=orders[branch].find(i=>i.code===code);
+    const it=orders[branch].find(i=>i.code===code);
     orders[branch]=orders[branch].filter(i=>i.code!==code);
-    if(item&&item.rowId) sheetDelete(branch,item.rowId);
+    if(it&&it.rowId) sheetDelete(branch,it.rowId);
   });
 }
 function renderOrderKeepScroll(){
