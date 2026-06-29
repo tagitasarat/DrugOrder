@@ -737,16 +737,18 @@ function showDupWarning(drug, note, branch, existing){
   } else {
     const sinceTxt=daysSince==null?'':`<b>${daysSince} วันก่อน</b> `;
     body+=`<div style="font-size:12px;color:#856404;margin-bottom:6px">${esc(branch)} สั่งยานี้ไปแล้ว ${sinceTxt}(${esc(existing.orderedAt||'ไม่ทราบวันที่')}) สถานะ <b>รอของ</b></div>`;
-    if(canReorder){
-      body+=`<div style="font-size:12px;color:#856404">ของยังไม่มา — กดตามของเพื่อให้เจ้าของสั่งซ้ำได้</div>`;
+    if(daysSince!=null && daysSince<REORDER_DAYS){
+      body+=`<div style="font-size:11px;color:var(--mut)">⏳ เพิ่งสั่งไปไม่นาน — ถ้าของยังไม่มาจริง กดตามของเพื่อสั่งซ้ำได้</div>`;
     } else {
-      body+=`<div style="font-size:11px;color:var(--mut)">⏳ ตามของได้หลังสั่งไปแล้ว ${REORDER_DAYS} วัน (อีก ${REORDER_DAYS-daysSince} วัน)</div>`;
+      body+=`<div style="font-size:12px;color:#856404">ของยังไม่มา — กดตามของเพื่อให้เจ้าของสั่งซ้ำได้</div>`;
     }
   }
   body+='</div>';
   body+=`<div style="display:flex;gap:8px;margin-top:4px">
     <button class="btn btnOut" style="flex:1" onclick="closeModal('histModal')">ปิด</button>`;
-  if(status==='รอของ' && canReorder){
+  // Always offer reorder for รอของ items so a missing/odd order date can never
+  // trap the user; the message above just advises if it was ordered very recently.
+  if(status==='รอของ'){
     body+=`<button class="btn btnWarn" style="flex:1" onclick="doReorder('${esc(existing.code)}','${esc(branch)}')">⏰ ตามของ / สั่งซ้ำ</button>`;
   }
   body+='</div>';
