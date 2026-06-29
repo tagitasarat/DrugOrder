@@ -483,13 +483,19 @@ function enterApp(){
           }
           const catD=CAT[code];
           const sups=catD?catD.sups:[{s:String(it.supplier||'ไม่ทราบบริษัท'),h:[]}];
+          // Normalise status: the app only has รอสั่ง / รอของ. Legacy or odd
+          // values (anything not exactly รอสั่ง) are treated as already-ordered
+          // when there's an orderedAt, so old rows still show in the รอของ tab
+          // and behave correctly everywhere.
+          let st=(it.status||'รอสั่ง').toString().trim();
+          if(st!=='รอสั่ง' && st!=='รอของ') st = it.orderedAt ? 'รอของ' : 'รอสั่ง';
           orders[b].push({
             code,name:String(it.name||''),
             unit:String(it.unit||''),supplier:String(it.supplier||'ไม่ทราบบริษัท'),
             note:String(it.note||''),branch:it.branch||b,
             rowId:String(it.rowId),custom:!code.startsWith('P-'),
             qty:it.qty!=null?Number(it.qty):null,
-            status:it.status||'รอสั่ง',
+            status:st,
             orderedAt:it.orderedAt||null,
             ownerNote:'',
             sups
@@ -715,7 +721,9 @@ function checkRecentOrder(code, branch){
 }
 
 function showDupWarning(drug, note, branch, existing){
-  const status=existing.status||'รอสั่ง';
+  // Treat anything that isn't exactly รอสั่ง as already-ordered (รอของ),
+  // so legacy/odd status values don't slip past the รอของ handling below.
+  const status=(existing.status&&existing.status!=='รอสั่ง')?'รอของ':'รอสั่ง';
   let canReorder=false;
   let daysSince=null;
   if(status==='รอของ'){
