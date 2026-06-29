@@ -685,7 +685,7 @@ function parseThaiDate(str){
     if(parts.length >= 3){
       let yr = parts[2].length<=2 ? 2000+parseInt(parts[2]) : parseInt(parts[2]);
       const mo = parseInt(parts[1]), dy = parseInt(parts[0]);
-      if(isNaN(yr)||isNaN(mo)||isNaN(dy)) return null;
+      if(isNaN(yr)||isNaN(mo)||isNaN(dy)){const nd=new Date(str);return isNaN(nd.getTime())?null:nd;}
       // Convert Buddhist Era to Christian Era if year > 2500
       if(yr > 2500) yr -= 543;
       const d = new Date(yr, mo-1, dy);
@@ -717,12 +717,16 @@ function checkRecentOrder(code, branch){
 function showDupWarning(drug, note, branch, existing){
   const status=existing.status||'รอสั่ง';
   let canReorder=false;
-  let daysSince=0;
-  if(status==='รอของ' && existing.orderedAt){
-    const d=parseThaiDate(existing.orderedAt);
+  let daysSince=null;
+  if(status==='รอของ'){
+    const d=existing.orderedAt?parseThaiDate(existing.orderedAt):null;
     if(d){
       daysSince=Math.floor((new Date()-d)/(24*60*60*1000));
       canReorder=daysSince>=REORDER_DAYS;
+    } else {
+      // Can't tell when it was ordered (missing/odd date) — don't trap the
+      // user; allow re-ordering rather than blocking forever.
+      canReorder=true;
     }
   }
   document.getElementById('histTitle').textContent='⚠️ ยานี้มีในรายการอยู่แล้ว';
@@ -731,9 +735,10 @@ function showDupWarning(drug, note, branch, existing){
   if(status==='รอสั่ง'){
     body+=`<div style="font-size:12px;color:#856404">${esc(branch)} มียานี้อยู่ในรายการ <b>รอสั่ง</b> แล้ว ไม่ต้องคีย์ซ้ำ</div>`;
   } else {
-    body+=`<div style="font-size:12px;color:#856404;margin-bottom:6px">${esc(branch)} สั่งยานี้ไปแล้ว <b>${daysSince} วันก่อน</b> (${esc(existing.orderedAt||'')}) สถานะ <b>รอของ</b></div>`;
+    const sinceTxt=daysSince==null?'':`<b>${daysSince} วันก่อน</b> `;
+    body+=`<div style="font-size:12px;color:#856404;margin-bottom:6px">${esc(branch)} สั่งยานี้ไปแล้ว ${sinceTxt}(${esc(existing.orderedAt||'ไม่ทราบวันที่')}) สถานะ <b>รอของ</b></div>`;
     if(canReorder){
-      body+=`<div style="font-size:12px;color:#856404">ของยังไม่มาเกิน ${REORDER_DAYS} วัน — กดตามของเพื่อให้เจ้าของสั่งซ้ำได้</div>`;
+      body+=`<div style="font-size:12px;color:#856404">ของยังไม่มา — กดตามของเพื่อให้เจ้าของสั่งซ้ำได้</div>`;
     } else {
       body+=`<div style="font-size:11px;color:var(--mut)">⏳ ตามของได้หลังสั่งไปแล้ว ${REORDER_DAYS} วัน (อีก ${REORDER_DAYS-daysSince} วัน)</div>`;
     }
