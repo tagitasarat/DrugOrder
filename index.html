@@ -959,12 +959,10 @@ function markAllOrdered(b,sup){
 }
 
 function receiveItem(el){
-  const b=el.getAttribute('data-branch');
-  const code=el.getAttribute('data-code');
-  const item=orders[b].find(i=>i.code===code&&i.status==='รอของ');
-  if(!item)return;
+  const info=rowInfo(el); if(!info) return;
+  const item=info.item, b=info.branch;
   toast('📥 รับของแล้ว: '+item.name);
-  removeRowInPlace(b,code,el,()=>{
+  removeRowInPlace(b,info.code,el,()=>{
     orders[b]=orders[b].filter(i=>i!==item);
     if(item.rowId) sheetReceived(b,item.rowId);
   });
@@ -1139,22 +1137,18 @@ function handleCopy(el){copySupplier(el.getAttribute('data-b'),el.getAttribute('
 
 let qtyTimer=null;
 function useRec(el){
-  const code=el.getAttribute('data-code');
-  const branch=el.getAttribute('data-branch');
+  const info=rowInfo(el); if(!info) return;
+  const item=info.item, branch=info.branch;
   const rec=parseInt(el.getAttribute('data-rec'));
-  const item=(orders[branch]||[]).find(i=>i.code===code);
-  if(!item)return;
   item.qty=rec;
   if(item.rowId) sheetQty(branch,item.rowId,rec);
   renderOrder();
   toast('📦 ใส่จำนวนแนะนำ '+rec+' แล้ว');
 }
 function updateQty(el){
-  const code=el.getAttribute('data-code');
-  const branch=el.getAttribute('data-branch');
+  const info=rowInfo(el); if(!info) return;
+  const item=info.item, branch=info.branch;
   const val=parseInt(el.value)||null;
-  const item=(orders[branch]||[]).find(i=>i.code===code);
-  if(!item)return;
   item.qty=val;
   // Debounce: save to Sheet 1s after user stops typing
   clearTimeout(qtyTimer);
@@ -1198,11 +1192,27 @@ function handleRowClick(el){
   const branch=el.getAttribute('data-branch');
   showHist(code,branch);
 }
+// Resolve the exact clicked row's item by its rowId (falling back to code), so
+// an action never hits a different item that happens to share the same code
+// (e.g. an old รอของ duplicate alongside a new รอสั่ง one).
+function rowInfo(el){
+  const r=el&&el.closest?el.closest('.iRow'):null; if(!r) return null;
+  const branch=r.getAttribute('data-branch');
+  const rowId=r.getAttribute('data-rowid');
+  const code=r.getAttribute('data-code');
+  const list=orders[branch]||[];
+  const item=(rowId?list.find(i=>String(i.rowId)===String(rowId)):null)||list.find(i=>i.code===code);
+  return item?{item:item,branch:branch,code:code}:null;
+}
 function handleOrd(el){
-  const code=el.getAttribute('data-code');
-  const branch=el.getAttribute('data-branch');
-  // single-branch order (the 🔗 button handles multi-branch explicitly)
-  markOrderedInPlace(branch,code,el);
+  const info=rowInfo(el); if(!info) return;
+  const it=info.item;
+  it.status='รอของ';
+  it.orderedAt=nowStamp();
+  if(it.rowId) sheetOrdered(info.branch,it.rowId);
+  toast('📦 สั่งแล้ว: '+it.name);
+  if(isOwner)renderOTabs();
+  renderOrderKeepScroll();
 }
 
 function openMultiBranch(el){
@@ -1273,18 +1283,17 @@ function confirmMultiBranchOrder(code){
   toast('📦 สั่งแล้ว '+cnt+' สาขา');
 }
 function handleDel(el){
-  const code=el.getAttribute('data-code');
-  const branch=el.getAttribute('data-branch');
-  const item=orders[branch].find(i=>i.code===code);
+  const info=rowInfo(el); if(!info) return;
+  const item=info.item, branch=info.branch;
   // Guard the dangerous mis-tap: deleting an already-ordered (รอของ) item.
   // If the goods arrived, staff should press 📥 รับของ, not delete.
-  if(item && item.status==='รอของ'){
+  if(item.status==='รอของ'){
     if(!confirm('⚠️ ลบรายการที่ "สั่งไปแล้ว" ออกจากระบบ?\n\nถ้าของมาถึงแล้ว ให้กด 📥 รับของ แทน\nกดลบจะเอารายการออกโดยไม่บันทึกว่ารับของ')) return;
   }
-  removeRowInPlace(branch,code,el,()=>{
-    const it=orders[branch].find(i=>i.code===code);
-    orders[branch]=orders[branch].filter(i=>i.code!==code);
-    if(it&&it.rowId) sheetDelete(branch,it.rowId);
+  removeRowInPlace(branch,info.code,el,()=>{
+    // remove only this exact row, not every item sharing the code
+    orders[branch]=orders[branch].filter(i=>i!==item);
+    if(item.rowId) sheetDelete(branch,item.rowId);
   });
 }
 function renderOrderKeepScroll(){
@@ -1411,7 +1420,7 @@ function renderOrder(){
           multiBtn=`<button class="multiBranchBtn" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();openMultiBranch(this)">🔗 +${others.length} สาขา</button>`;
         }
       }
-      html+=`<div class="iRow${it.ownerNote?' hasOwnerNote':''}" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="handleRowClick(this)">
+      html+=`<div class="iRow${it.ownerNote?' hasOwnerNote':''}" data-code="${esc(it.code)}" data-branch="${esc(vb)}" data-rowid="${esc(it.rowId||'')}" onclick="handleRowClick(this)">
         <div>
           <div class="iName">${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''} <span class="copyIcon" data-name="${esc(it.name)}" onclick="event.stopPropagation();copyName(this)" title="คัดลอกชื่อ">📋</span></div>
           ${it.ownerNote?`<div class="ownerNoteRow">👑 ${esc(it.ownerNote)}</div>`:''}
