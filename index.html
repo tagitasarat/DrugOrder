@@ -1047,6 +1047,8 @@ function openSupplierAllBranches(sup){
         </div>
         <input class="qtyInput" type="number" min="1" placeholder="จำนวน" value="${qtyVal}" style="width:62px" onchange="supAllSetQty('${ea(b)}','${ea(it.code)}',this.value)">
         ${rec?`<button class="recBadge" onclick="supAllUseRec('${ea(b)}','${ea(it.code)}',${rec},'${ea(sup)}')">แนะนำ ${rec}</button>`:''}
+        <button class="btnSm btnCopy" title="คัดลอกรายการนี้" onclick="supAllCopyItem('${ea(b)}','${ea(it.code)}')">📋</button>
+        <button class="btnSm" style="background:${it.ownerNote===ASK_NOTE?'#7c3aed':'#ede9fe'};color:${it.ownerNote===ASK_NOTE?'#fff':'#7c3aed'};border:1px solid #c4b5fd;white-space:nowrap" title="บอกสาขาให้ไปขอของจากสาขาอื่นแทน" onclick="supAllAskOther('${ea(b)}','${ea(it.code)}','${ea(sup)}')">🔁 ขอสาขาอื่น</button>
         <button class="btnSm btnOrd" title="สั่งแล้ว" onclick="supAllMarkOrdered('${ea(b)}','${ea(it.code)}','${ea(sup)}')">✅</button>
       </div>`;
     });
@@ -1088,12 +1090,50 @@ function copySupplierAll(sup){
   const groups=supplierAcrossBranches(sup);
   if(!groups.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
-  const lines=['บริษัท: '+sup,'วันที่: '+date];
+  // Aggregate across branches: one line per product (no branch headers, no
+  // repeated names) with quantities summed — the list a supplier actually needs.
+  const agg={}, keys=[];
   groups.forEach(g=>{
-    lines.push('--- '+g[0]+' ---');
-    g[1].forEach((it,i)=>lines.push((i+1)+'. '+it.name+(it.code&&!it.custom?' ('+it.code+')':'')+' ['+it.unit+']'+(it.qty?' จำนวน '+it.qty:'')+(it.note?' — '+it.note:'')));
+    g[1].forEach(it=>{
+      const k=it.custom?('n:'+it.name):('c:'+it.code);
+      if(!agg[k]){agg[k]={name:it.name,code:it.code,custom:it.custom,unit:it.unit,qty:0,hasQty:false,notes:[]};keys.push(k);}
+      if(it.qty){agg[k].qty+=Number(it.qty)||0;agg[k].hasQty=true;}
+      if(it.note&&agg[k].notes.indexOf(it.note)<0)agg[k].notes.push(it.note);
+    });
   });
-  navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy รวมทุกสาขาแล้ว'));
+  const lines=['บริษัท: '+sup,'วันที่: '+date,'---'];
+  keys.forEach((k,i)=>{
+    const a=agg[k];
+    lines.push((i+1)+'. '+a.name+(a.code&&!a.custom?' ('+a.code+')':'')+' ['+a.unit+']'+(a.hasQty?' จำนวน '+a.qty:'')+(a.notes.length?' — '+a.notes.join(' / '):''));
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy รวมแล้ว ('+keys.length+' รายการ)'));
+}
+// Copy a single line from the รวมสาขา modal
+function supAllCopyItem(branch,code){
+  const item=(orders[branch]||[]).find(i=>i.code===code);if(!item)return;
+  const line=item.name+(item.code&&!item.custom?' ('+item.code+')':'')+' ['+item.unit+']'+(item.qty?' จำนวน '+item.qty:'')+(item.note?' — '+item.note:'');
+  navigator.clipboard.writeText(line).then(()=>toast('📋 คัดลอก: '+item.name));
+}
+// One-tap owner note telling the branch to get stock from another branch
+// instead of ordering. Tapping again clears it (undo).
+const ASK_NOTE='สาขาอื่นมีของเหลือ ไปขอสาขาอื่นแทน';
+function toggleAskOther(item,branch){
+  const on=item.ownerNote===ASK_NOTE;
+  item.ownerNote=on?'':ASK_NOTE;
+  persistOwnerNote(branch,item.code,item.ownerNote);
+  if(isOwner)renderOTabs();
+  toast(on?'ลบโน้ตแล้ว':'👑 บอกให้ไปขอสาขาอื่นแล้ว');
+}
+function askOtherRow(el){
+  const info=rowInfo(el); if(!info)return;
+  toggleAskOther(info.item,info.branch);
+  renderOrderKeepScroll();
+}
+function supAllAskOther(branch,code,sup){
+  const item=(orders[branch]||[]).find(i=>i.code===code);if(!item)return;
+  toggleAskOther(item,branch);
+  renderOrder();
+  openSupplierAllBranches(sup);
 }
 function exportSupplierAll(sup){
   const groups=supplierAcrossBranches(sup);
@@ -1438,6 +1478,7 @@ function renderOrder(){
               onclick="event.stopPropagation()" onchange="event.stopPropagation();updateQty(this)">
             ${recQty?`<button class="recBadge" data-code="${esc(it.code)}" data-branch="${esc(vb)}" data-rec="${recQty}" onclick="event.stopPropagation();useRec(this)">แนะนำ ${recQty}</button>`:''}
           </div>`:(qtyVal?`<span class="qtyBadge">${qtyVal} ${esc(it.unit)}</span>`:'')}
+          ${isOwner&&!isWaitGoods?`<button class="btnSm" style="background:${it.ownerNote===ASK_NOTE?'#7c3aed':'#ede9fe'};color:${it.ownerNote===ASK_NOTE?'#fff':'#7c3aed'};border:1px solid #c4b5fd;font-size:10px;white-space:nowrap" title="บอกสาขาให้ไปขอของจากสาขาอื่นแทน" onclick="event.stopPropagation();askOtherRow(this)">🔁 ขอสาขาอื่น</button>`:''}
           ${isOwner&&!isWaitGoods?`<button class="btnSm btnOrd" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();handleOrd(this)">✅</button>`:''}
           ${isWaitGoods?`<button class="btnRecv" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();receiveItem(this)">📥 รับของ</button>`:''}
           <button class="btnDel" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();handleDel(this)">✕</button>
