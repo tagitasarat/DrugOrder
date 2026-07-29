@@ -991,7 +991,8 @@ function copySupplier(b,sup){
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const lines=['บริษัท: '+sup,'สาขา: '+b,'วันที่: '+date,'---'];
-  items.forEach((it,i)=>lines.push((i+1)+'. '+it.name+(it.code&&!it.custom?' ('+it.code+')':'')+' ['+it.unit+']'+(it.qty?' จำนวน '+it.qty:'')+(it.note?' — '+it.note:'')));
+  // Copy text is name-only (no code/unit) per owner preference
+  items.forEach((it,i)=>lines.push((i+1)+'. '+it.name+(it.qty?' จำนวน '+it.qty:'')+(it.note?' — '+it.note:'')));
   navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy แล้ว ('+items.length+' รายการ)'));
 }
 function exportSupplier(b,sup){
@@ -1038,11 +1039,15 @@ function openSupplierAllBranches(sup){
       </div>`;
     its.forEach(it=>{
       const rec=SALES[it.code]&&SALES[it.code][bKey]?SALES[it.code][bKey]:null;
+      // Total recommendation across every branch (not just this one) so the
+      // owner sees the full quantity to order from the supplier at once.
+      let recAll=0;
+      if(SALES[it.code]) Object.values(SALES[it.code]).forEach(v=>{recAll+=Number(v)||0;});
       const qtyVal=it.qty!=null?it.qty:'';
       body+=`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #f5f7fa">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px">${esc(it.name)}</div>
-          <div style="font-size:10px;color:var(--mut)">${it.custom?'':esc(it.code)+' · '}${esc(it.unit)}${it.note?' · 📝'+esc(it.note):''}</div>
+          <div style="font-size:10px;color:var(--mut)">${it.custom?'':esc(it.code)+' · '}${esc(it.unit)}${it.note?' · 📝'+esc(it.note):''}${recAll?' · <b style="color:#b45309">💡 แนะนำรวมทุกสาขา '+recAll+'</b>':''}</div>
           ${it.ownerNote?`<div class="ownerNoteRow">👑 ${esc(it.ownerNote)}</div>`:''}
         </div>
         <input class="qtyInput" type="number" min="1" placeholder="จำนวน" value="${qtyVal}" style="width:62px" onchange="supAllSetQty('${ea(b)}','${ea(it.code)}',this.value)">
@@ -1104,14 +1109,14 @@ function copySupplierAll(sup){
   const lines=['บริษัท: '+sup,'วันที่: '+date,'---'];
   keys.forEach((k,i)=>{
     const a=agg[k];
-    lines.push((i+1)+'. '+a.name+(a.code&&!a.custom?' ('+a.code+')':'')+' ['+a.unit+']'+(a.hasQty?' จำนวน '+a.qty:'')+(a.notes.length?' — '+a.notes.join(' / '):''));
+    lines.push((i+1)+'. '+a.name+(a.hasQty?' จำนวน '+a.qty:'')+(a.notes.length?' — '+a.notes.join(' / '):''));
   });
   navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy รวมแล้ว ('+keys.length+' รายการ)'));
 }
 // Copy a single line from the รวมสาขา modal
 function supAllCopyItem(branch,code){
   const item=(orders[branch]||[]).find(i=>i.code===code);if(!item)return;
-  const line=item.name+(item.code&&!item.custom?' ('+item.code+')':'')+' ['+item.unit+']'+(item.qty?' จำนวน '+item.qty:'')+(item.note?' — '+item.note:'');
+  const line=item.name+(item.qty?' จำนวน '+item.qty:'')+(item.note?' — '+item.note:'');
   navigator.clipboard.writeText(line).then(()=>toast('📋 คัดลอก: '+item.name));
 }
 // One-tap owner note telling the branch to get stock from another branch
@@ -1165,8 +1170,6 @@ function copyAll(){
   const lines=['สาขา: '+vb,'วันที่: '+date,'---'];
   items.forEach((it,i)=>lines.push(
     (i+1)+'. '+it.name+
-    (it.code&&!it.custom?' ('+it.code+')':'')+
-    ' ['+it.unit+']'+
     (it.qty?' จำนวน '+it.qty:'')+
     (it.note?' — '+it.note:'')
   ));
