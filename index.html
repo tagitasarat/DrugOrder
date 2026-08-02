@@ -938,13 +938,20 @@ function sheetQty(branch,rowId,qty){
   return api({action:'qty',branch,rowId,qty}).catch(showSaveError);
 }
 
+// fetch with a hard timeout: a hanging Apps Script response used to leave the
+// app stuck on "กำลังโหลดรายการ..." forever with the add form locked.
+function fetchTO(url,ms){
+  const ac=new AbortController();
+  const t=setTimeout(()=>ac.abort(),ms||20000);
+  return fetch(url,{signal:ac.signal}).finally(()=>clearTimeout(t));
+}
 function loadFromSheet(branch){
   const url=SCRIPT_URL+'?action=load&branch='+encodeURIComponent(branch);
-  return fetch(url).then(r=>r.json()).catch(()=>({error:true}));
+  return fetchTO(url).then(r=>r.json()).catch(()=>({error:true}));
 }
 function loadRecentOrdered(branch){
   const url=SCRIPT_URL+'?action=loadRecent&branch='+encodeURIComponent(branch);
-  return fetch(url).then(r=>r.json()).then(d=>d.items||[]).catch(()=>[]);
+  return fetchTO(url).then(r=>r.json()).then(d=>d.items||[]).catch(()=>[]);
 }
 function markAllOrdered(b,sup){
   const its=orders[b].filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')==='รอสั่ง');
