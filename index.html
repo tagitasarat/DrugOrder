@@ -456,19 +456,16 @@ function enterApp(){
   const branchesToLoad=isOwner?BRANCHES:[curBranch];
   renderOrder();
   toast('⏳ กำลังโหลดรายการ...');
-  // Load recently ordered items (last 7 days) for duplicate check
-  branchesToLoad.forEach(b=>{
-    loadRecentOrdered(b).then(items=>{
-      if(items.length) recentOrdered[b]=items;
-    }).catch(e=>console.warn('[loadRecent] error',e));
-  });
+  // NOTE: the duplicate-check cache (loadRecentOrdered) is fetched AFTER the
+  // main loads below — firing 10 concurrent requests at the Apps Script made
+  // some branch loads fail and show 0 items.
 
-  let loadFailed=false;
+  let loadFailed=false; const failedBranches=[];
   Promise.all(branchesToLoad.map(b=>
-    loadFromSheet(b).then(res=>{
+    loadWithRetry(b,3).then(res=>{
       // A failed load returns {error:true}; keep any existing rows instead of
       // wiping the list to empty on a transient network error.
-      if(res&&res.error){loadFailed=true;return;}
+      if(res&&res.error){loadFailed=true;failedBranches.push(b);return;}
       // Clear existing orders for this branch before loading from Sheets
       // to prevent duplicates on page reload
       orders[b] = [];
@@ -503,18 +500,28 @@ function enterApp(){
         });
       }
       orders[b].forEach(x=>{if(onMap[x.code]!=null)x.ownerNote=onMap[x.code];});
-    }).catch(err=>{loadFailed=true;console.warn('load failed for '+b, err);})
+      // Progressive render: show each branch as soon as it arrives instead of
+      // waiting for the slowest one.
+      if(isOwner)renderOTabs();
+      renderOrder();
+    }).catch(err=>{loadFailed=true;failedBranches.push(b);console.warn('load failed for '+b, err);})
   )).then(()=>{
     isLoading=false;
     setAddLock(false);
     if(isOwner)renderOTabs();
     renderOrder();
     if(loadFailed){
-      toast('⚠️ โหลดข้อมูลไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ตแล้วรีเฟรช');
+      toast('⚠️ โหลดไม่สำเร็จ: '+failedBranches.join(', ')+' — รีเฟรชเพื่อลองใหม่');
     }else{
       const total=branchesToLoad.reduce((s,b)=>s+(orders[b]||[]).length,0);
       toast(total>0?'✓ โหลด '+total+' รายการแล้ว':'✓ ไม่มีรายการรอสั่ง');
     }
+    // Warm the duplicate-check cache now that the heavy loads are done
+    branchesToLoad.forEach(b=>{
+      loadRecentOrdered(b).then(items=>{
+        if(items.length) recentOrdered[b]=items;
+      }).catch(e=>console.warn('[loadRecent] error',e));
+    });
   }).catch(()=>{
     isLoading=false;
     setAddLock(false);
@@ -942,12 +949,22 @@ function sheetQty(branch,rowId,qty){
 // app stuck on "กำลังโหลดรายการ..." forever with the add form locked.
 function fetchTO(url,ms){
   const ac=new AbortController();
-  const t=setTimeout(()=>ac.abort(),ms||20000);
+  const t=setTimeout(()=>ac.abort(),ms||30000);
   return fetch(url,{signal:ac.signal}).finally(()=>clearTimeout(t));
 }
 function loadFromSheet(branch){
   const url=SCRIPT_URL+'?action=load&branch='+encodeURIComponent(branch);
   return fetchTO(url).then(r=>r.json()).catch(()=>({error:true}));
+}
+// Apps Script sometimes drops requests under concurrent load (a branch then
+// shows 0 items). Retry each branch up to `tries` times with a short pause.
+function loadWithRetry(branch,tries){
+  return loadFromSheet(branch).then(res=>{
+    if(res&&res.error&&tries>1){
+      return new Promise(r=>setTimeout(r,1500)).then(()=>loadWithRetry(branch,tries-1));
+    }
+    return res;
+  });
 }
 function loadRecentOrdered(branch){
   const url=SCRIPT_URL+'?action=loadRecent&branch='+encodeURIComponent(branch);
