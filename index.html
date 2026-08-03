@@ -475,7 +475,13 @@ function enterApp(){
         res.items.forEach(it=>{
           const code=String(it.code||'');
           if(code===ON_CODE){ // hidden owner-note row (no backend change needed)
-            try{const d=JSON.parse(it.note||'{}');if(d&&d.c){onMap[d.c]=d.t||'';ownerNoteRows[b][d.c]=String(it.rowId);}}catch(e){}
+            // ONv2|<code>|<uri-encoded text> — no JSON-special characters, so
+            // it can never corrupt a naively-built backend response. Legacy
+            // JSON rows are still read.
+            const n=String(it.note||''); let c=null,t='';
+            if(n.indexOf('ONv2|')===0){const p=n.split('|');c=p[1];try{t=decodeURIComponent(p[2]||'');}catch(e){t=p[2]||'';}}
+            else{try{const d=JSON.parse(n);if(d&&d.c){c=d.c;t=d.t||'';}}catch(e){}}
+            if(c){onMap[c]=t;ownerNoteRows[b][c]=String(it.rowId);}
             return;
           }
           const catD=CAT[code];
@@ -500,6 +506,14 @@ function enterApp(){
         });
       }
       orders[b].forEach(x=>{if(onMap[x.code]!=null)x.ownerNote=onMap[x.code];});
+      // Re-save any notes recovered during self-repair (in the new safe format)
+      if(pendingNoteRestore[b]&&pendingNoteRestore[b].length){
+        pendingNoteRestore[b].forEach(nn=>{
+          const it2=orders[b].find(x=>x.code===nn.c);
+          if(it2&&nn.t){it2.ownerNote=nn.t;persistOwnerNote(b,nn.c,nn.t);}
+        });
+        delete pendingNoteRestore[b];
+      }
       // Progressive render: show each branch as soon as it arrives instead of
       // waiting for the slowest one.
       if(isOwner)renderOTabs();
@@ -926,9 +940,12 @@ function api(payload){
 function showSaveError(){toast('⚠️ บันทึกออนไลน์ไม่สำเร็จ — ตรวจสอบเน็ต');}
 
 function sheetAdd(branch,item){
+  // Straight double quotes in free text can corrupt a concatenation-built
+  // backend JSON response; swap them for curly quotes before storing.
+  const safeNote=String(item.note||'').replace(/"/g,'”');
   return api({action:'add',branch,
     rowId:item.rowId,orderDate:document.getElementById('orderDate').value,
-    supplier:item.supplier,code:item.code||'-',name:item.name,unit:item.unit,note:item.note||''
+    supplier:item.supplier,code:item.code||'-',name:item.name,unit:item.unit,note:safeNote
   });
 }
 
@@ -954,14 +971,43 @@ function fetchTO(url,ms){
 }
 function loadFromSheet(branch){
   const url=SCRIPT_URL+'?action=load&branch='+encodeURIComponent(branch);
-  return fetchTO(url).then(r=>r.json()).catch(()=>({error:true}));
+  // Parse from text so a corrupted JSON response still gives us the raw body
+  // (needed by the self-repair below).
+  return fetchTO(url).then(r=>r.text()).then(t=>{
+    try{ return JSON.parse(t); }catch(e){ return {error:true, raw:t}; }
+  }).catch(()=>({error:true}));
 }
-// Apps Script sometimes drops requests under concurrent load (a branch then
-// shows 0 items). Retry each branch up to `tries` times with a short pause.
+// Owner-note hidden rows used to store JSON (full of double quotes) in the
+// note column; if the Apps Script builds its response by string concatenation,
+// those quotes corrupt the whole payload and the branch loads as 0 items.
+// From the raw broken body we can still find those rows and remove them.
+let pendingNoteRestore={}; // {branch:[{c,t}]} notes recovered from a corrupted body
+function extractOnSegments(raw){
+  const ids=new Set(), notes=[];
+  String(raw).split(/\},\s*\{/).forEach(seg=>{
+    if(seg.indexOf(ON_CODE)<0) return;
+    const m=seg.match(/\d{13}-[a-z0-9]+/g);
+    if(m) m.forEach(x=>ids.add(x));
+    const nm=seg.match(/"c":"([^"]+)","t":"([^"]*)"/);
+    if(nm&&nm[2]) notes.push({c:nm[1],t:nm[2]});
+  });
+  return {ids:[...ids].slice(0,50), notes};
+}
+// Retry each branch up to `tries` times; if the response is corrupted by
+// poison owner-note rows, delete them and reload (self-repair).
 function loadWithRetry(branch,tries){
   return loadFromSheet(branch).then(res=>{
     if(res&&res.error&&tries>1){
-      return new Promise(r=>setTimeout(r,1500)).then(()=>loadWithRetry(branch,tries-1));
+      let wait=1500;
+      if(res.raw){
+        const f=extractOnSegments(res.raw);
+        if(f.ids.length){
+          f.ids.forEach(id=>api({action:'delete',branch,rowId:id}).catch(()=>{}));
+          if(f.notes.length) pendingNoteRestore[branch]=f.notes;
+          wait=3000; // give the sheet a moment to apply the deletes
+        }
+      }
+      return new Promise(r=>setTimeout(r,wait)).then(()=>loadWithRetry(branch,tries-1));
     }
     return res;
   });
@@ -1648,8 +1694,10 @@ function persistOwnerNote(branch,code,txt){
   if(txt){
     const rid=Date.now()+'-on'+Math.random().toString(36).slice(2,7);
     ownerNoteRows[branch][code]=rid;
+    // ONv2 format: uri-encoded, no quotes/braces/newlines — cannot corrupt a
+    // backend that builds its JSON response by string concatenation.
     api({action:'add',branch,rowId:rid,orderDate:document.getElementById('orderDate').value,
-      supplier:ON_CODE,code:ON_CODE,name:code,unit:'-',note:JSON.stringify({c:code,t:txt})
+      supplier:ON_CODE,code:ON_CODE,name:code,unit:'-',note:'ONv2|'+code+'|'+encodeURIComponent(txt)
     }).catch(showSaveError);
   }
 }
