@@ -454,78 +454,50 @@ function enterApp(){
   setAddLock(true);
   // Load pending items from Sheets
   const branchesToLoad=isOwner?BRANCHES:[curBranch];
+  // Show the last-known data instantly from the local cache so a reload never
+  // starts from a blank screen while the (slow) sheet loads run.
+  branchesToLoad.forEach(b=>hydrateCache(b));
+  if(isOwner)renderOTabs();
   renderOrder();
-  toast('⏳ กำลังโหลดรายการ...');
-  // NOTE: the duplicate-check cache (loadRecentOrdered) is fetched AFTER the
-  // main loads below — firing 10 concurrent requests at the Apps Script made
-  // some branch loads fail and show 0 items.
-
-  let loadFailed=false; const failedBranches=[];
-  Promise.all(branchesToLoad.map(b=>
-    loadWithRetry(b,3).then(res=>{
-      // A failed load returns {error:true}; keep any existing rows instead of
-      // wiping the list to empty on a transient network error.
-      if(res&&res.error){loadFailed=true;failedBranches.push(b);return;}
-      // Clear existing orders for this branch before loading from Sheets
-      // to prevent duplicates on page reload
-      orders[b] = [];
-      ownerNoteRows[b] = {};
-      const onMap = {}; // ownerNote text keyed by product code, from hidden ON rows
-      if(res.items&&res.items.length){
-        res.items.forEach(it=>{
-          const code=String(it.code||'');
-          if(code===ON_CODE){ // hidden owner-note row (no backend change needed)
-            // ONv2|<code>|<uri-encoded text> — no JSON-special characters, so
-            // it can never corrupt a naively-built backend response. Legacy
-            // JSON rows are still read.
-            const n=String(it.note||''); let c=null,t='';
-            if(n.indexOf('ONv2|')===0){const p=n.split('|');c=p[1];try{t=decodeURIComponent(p[2]||'');}catch(e){t=p[2]||'';}}
-            else{try{const d=JSON.parse(n);if(d&&d.c){c=d.c;t=d.t||'';}}catch(e){}}
-            if(c){onMap[c]=t;ownerNoteRows[b][c]=String(it.rowId);}
-            return;
-          }
-          const catD=CAT[code];
-          const sups=catD?catD.sups:[{s:String(it.supplier||'ไม่ทราบบริษัท'),h:[]}];
-          // Normalise status: the app only has รอสั่ง / รอของ. Legacy or odd
-          // values (anything not exactly รอสั่ง) are treated as already-ordered
-          // when there's an orderedAt, so old rows still show in the รอของ tab
-          // and behave correctly everywhere.
-          let st=(it.status||'รอสั่ง').toString().trim();
-          if(st!=='รอสั่ง' && st!=='รอของ') st = it.orderedAt ? 'รอของ' : 'รอสั่ง';
-          orders[b].push({
-            code,name:String(it.name||''),
-            unit:String(it.unit||''),supplier:String(it.supplier||'ไม่ทราบบริษัท'),
-            note:String(it.note||''),branch:it.branch||b,
-            rowId:String(it.rowId),custom:!code.startsWith('P-'),
-            qty:it.qty!=null?Number(it.qty):null,
-            status:st,
-            orderedAt:it.orderedAt||null,
-            ownerNote:'',
-            sups
-          });
-        });
-      }
-      orders[b].forEach(x=>{if(onMap[x.code]!=null)x.ownerNote=onMap[x.code];});
-      // Re-save any notes recovered during self-repair (in the new safe format)
-      if(pendingNoteRestore[b]&&pendingNoteRestore[b].length){
-        pendingNoteRestore[b].forEach(nn=>{
-          const it2=orders[b].find(x=>x.code===nn.c);
-          if(it2&&nn.t){it2.ownerNote=nn.t;persistOwnerNote(b,nn.c,nn.t);}
-        });
-        delete pendingNoteRestore[b];
-      }
-      // Progressive render: show each branch as soon as it arrives instead of
-      // waiting for the slowest one.
-      if(isOwner)renderOTabs();
-      renderOrder();
-    }).catch(err=>{loadFailed=true;failedBranches.push(b);console.warn('load failed for '+b, err);})
-  )).then(()=>{
+  // Branches are loaded ONE AT A TIME, current branch first. Parallel loads
+  // made the Apps Script queue requests server-side, so the last branch always
+  // starved past its timeout and the whole boot took longer overall.
+  const ab=activeBranch();
+  const queue=[...branchesToLoad].sort((x,y)=>(x===ab?-1:0)-(y===ab?-1:0));
+  const failed=[];
+  let chain=Promise.resolve();
+  queue.forEach((b,i)=>{
+    chain=chain.then(()=>{
+      toast('⏳ โหลด '+b+' ('+(i+1)+'/'+queue.length+')...');
+      return loadWithRetry(b,2).then(res=>{
+        if(!ingestBranch(b,res)){failed.push(b);return;}
+        if(isOwner)renderOTabs();
+        renderOrder();
+      }).catch(err=>{failed.push(b);console.warn('load failed for '+b, err);});
+    });
+  });
+  chain.then(()=>{
+    // Second pass just for the branches that missed, now that the server is free
+    const still=[];
+    let c2=Promise.resolve();
+    failed.forEach(b=>{
+      c2=c2.then(()=>{
+        toast('⏳ ลองโหลด '+b+' อีกครั้ง...');
+        return loadWithRetry(b,2).then(res=>{
+          if(!ingestBranch(b,res)){still.push(b);return;}
+          if(isOwner)renderOTabs();
+          renderOrder();
+        }).catch(()=>still.push(b));
+      });
+    });
+    return c2.then(()=>still);
+  }).then(still=>{
     isLoading=false;
     setAddLock(false);
     if(isOwner)renderOTabs();
     renderOrder();
-    if(loadFailed){
-      toast('⚠️ โหลดไม่สำเร็จ: '+failedBranches.join(', ')+' — รีเฟรชเพื่อลองใหม่');
+    if(still&&still.length){
+      toast('⚠️ โหลดไม่สำเร็จ: '+still.join(', ')+' — แสดงข้อมูลเดิมไว้ก่อน');
     }else{
       const total=branchesToLoad.reduce((s,b)=>s+(orders[b]||[]).length,0);
       toast(total>0?'✓ โหลด '+total+' รายการแล้ว':'✓ ไม่มีรายการรอสั่ง');
@@ -540,6 +512,82 @@ function enterApp(){
     isLoading=false;
     setAddLock(false);
   });
+}
+
+// Apply one branch's sheet response to local state. Returns false on a failed
+// load (existing/cached rows are kept — never wiped to empty by an error).
+function ingestBranch(b,res){
+  if(!res||res.error) return false;
+  // Clear existing orders for this branch before loading from Sheets
+  // to prevent duplicates on page reload
+  orders[b] = [];
+  ownerNoteRows[b] = {};
+  const onMap = {}; // ownerNote text keyed by product code, from hidden ON rows
+  if(res.items&&res.items.length){
+    res.items.forEach(it=>{
+      const code=String(it.code||'');
+      if(code===ON_CODE){ // hidden owner-note row (no backend change needed)
+        // ONv2|<code>|<uri-encoded text> — no JSON-special characters, so it
+        // can never corrupt a naively-built backend response. Legacy JSON
+        // rows are still read.
+        const n=String(it.note||''); let c=null,t='';
+        if(n.indexOf('ONv2|')===0){const p=n.split('|');c=p[1];try{t=decodeURIComponent(p[2]||'');}catch(e){t=p[2]||'';}}
+        else{try{const d=JSON.parse(n);if(d&&d.c){c=d.c;t=d.t||'';}}catch(e){}}
+        if(c){onMap[c]=t;ownerNoteRows[b][c]=String(it.rowId);}
+        return;
+      }
+      const catD=CAT[code];
+      const sups=catD?catD.sups:[{s:String(it.supplier||'ไม่ทราบบริษัท'),h:[]}];
+      // Normalise status: the app only has รอสั่ง / รอของ. Legacy or odd
+      // values (anything not exactly รอสั่ง) are treated as already-ordered
+      // when there's an orderedAt, so old rows still show in the รอของ tab
+      // and behave correctly everywhere.
+      let st=(it.status||'รอสั่ง').toString().trim();
+      if(st!=='รอสั่ง' && st!=='รอของ') st = it.orderedAt ? 'รอของ' : 'รอสั่ง';
+      orders[b].push({
+        code,name:String(it.name||''),
+        unit:String(it.unit||''),supplier:String(it.supplier||'ไม่ทราบบริษัท'),
+        note:String(it.note||''),branch:it.branch||b,
+        rowId:String(it.rowId),custom:!code.startsWith('P-'),
+        qty:it.qty!=null?Number(it.qty):null,
+        status:st,
+        orderedAt:it.orderedAt||null,
+        ownerNote:'',
+        sups
+      });
+    });
+  }
+  orders[b].forEach(x=>{if(onMap[x.code]!=null)x.ownerNote=onMap[x.code];});
+  // Re-save any notes recovered during self-repair (in the new safe format)
+  if(pendingNoteRestore[b]&&pendingNoteRestore[b].length){
+    pendingNoteRestore[b].forEach(nn=>{
+      const it2=orders[b].find(x=>x.code===nn.c);
+      if(it2&&nn.t){it2.ownerNote=nn.t;persistOwnerNote(b,nn.c,nn.t);}
+    });
+    delete pendingNoteRestore[b];
+  }
+  saveCache(b);
+  return true;
+}
+
+// ── LOCAL CACHE (last-known orders per branch) ──
+// item.sups points into the big CAT tables, so it is stripped before saving
+// and rebuilt from CAT on hydrate.
+function saveCache(b){
+  try{
+    const slim=(orders[b]||[]).map(it=>{const o=Object.assign({},it);delete o.sups;return o;});
+    localStorage.setItem('ordCache:'+b, JSON.stringify(slim));
+  }catch(e){}
+}
+function hydrateCache(b){
+  try{
+    if((orders[b]||[]).length) return; // live data already present
+    const t=localStorage.getItem('ordCache:'+b); if(!t) return;
+    const arr=JSON.parse(t); if(!Array.isArray(arr)) return;
+    orders[b]=arr.map(it=>Object.assign({},it,{
+      sups:(CAT[it.code]?CAT[it.code].sups:[{s:it.supplier||'ไม่ทราบบริษัท',h:[]}])
+    }));
+  }catch(e){}
 }
 
 // ── OWNER TABS ──
@@ -1509,6 +1557,7 @@ function renderOrder(){
     document.getElementById('totBadge').textContent=shown.length;
     document.getElementById('totItems').textContent=shown.length;
     document.getElementById('totSup').textContent='0';
+    if(!isLoading&&vb) saveCache(vb);
     return;
   }
   const grouped={};
@@ -1594,6 +1643,9 @@ function renderOrder(){
   document.getElementById('totSup').textContent=sc;
   // re-apply receive-search filter if active
   if(statusFilter==='รอของ'){const ri=document.getElementById('recvSearchInput'); if(ri&&ri.value.trim())filterRecvList();}
+  // keep the local cache in sync after user actions (but never while booting,
+  // which would overwrite good cache with an empty list)
+  if(!isLoading&&vb) saveCache(vb);
 }
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
