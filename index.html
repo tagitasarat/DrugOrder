@@ -1109,8 +1109,8 @@ function copySupplier(b,sup){
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const lines=['บริษัท: '+sup,'สาขา: '+b,'วันที่: '+date,'---'];
-  // Copy text is name-only (no code/unit) per owner preference
-  items.forEach((it,i)=>lines.push((i+1)+'. '+it.name+(it.qty?' จำนวน '+it.qty:'')+(it.note?' — '+it.note:'')));
+  // Copy text is the drug name only — no code, unit, quantity or note
+  items.forEach((it,i)=>lines.push((i+1)+'. '+it.name));
   navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy แล้ว ('+items.length+' รายการ)'));
 }
 function exportSupplier(b,sup){
@@ -1227,14 +1227,14 @@ function copySupplierAll(sup){
   const lines=['บริษัท: '+sup,'วันที่: '+date,'---'];
   keys.forEach((k,i)=>{
     const a=agg[k];
-    lines.push((i+1)+'. '+a.name+(a.hasQty?' จำนวน '+a.qty:'')+(a.notes.length?' — '+a.notes.join(' / '):''));
+    lines.push((i+1)+'. '+a.name);
   });
   navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy รวมแล้ว ('+keys.length+' รายการ)'));
 }
 // Copy a single line from the รวมสาขา modal
 function supAllCopyItem(branch,code){
   const item=(orders[branch]||[]).find(i=>i.code===code);if(!item)return;
-  const line=item.name+(item.qty?' จำนวน '+item.qty:'')+(item.note?' — '+item.note:'');
+  const line=item.name;
   navigator.clipboard.writeText(line).then(()=>toast('📋 คัดลอก: '+item.name));
 }
 // One-tap owner note telling the branch to get stock from another branch
@@ -1314,11 +1314,7 @@ function copyAll(){
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const lines=['สาขา: '+vb,'วันที่: '+date,'---'];
-  items.forEach((it,i)=>lines.push(
-    (i+1)+'. '+it.name+
-    (it.qty?' จำนวน '+it.qty:'')+
-    (it.note?' — '+it.note:'')
-  ));
+  items.forEach((it,i)=>lines.push((i+1)+'. '+it.name));
   navigator.clipboard.writeText(lines.join('\n'))
     .then(()=>toast('📋 Copy ทั้งหมด '+items.length+' รายการแล้ว'));
 }
