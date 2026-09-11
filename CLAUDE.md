@@ -18,6 +18,7 @@ the existing tone (informal, emoji-prefixed labels like `➕ เพิ่ม`, `
 ```
 index.html      ← all UI + logic: HTML + CSS + JS (~80 KB)
 data.js         ← machine-generated data tables CAT / SALES / BC (~1.8 MB)
+apps-script.gs  ← reference copy of the Google Apps Script backend (not executed from here)
 ```
 
 There is **no** build system, package manager, bundler, test suite, linter,
@@ -116,6 +117,12 @@ export tool still emits a monolithic `index.html` with the data embedded, see
 "Updating the data snapshot" below before uploading.
 
 ### Backend (Google Apps Script + Google Sheets)
+`apps-script.gs` in this repo is the **reference copy** of that backend. It is
+not executed from the repo — the owner pastes it into the Apps Script editor
+bound to the sheet (Extensions → Apps Script → Save). Keep the copy here in
+sync whenever the backend changes, so it is never lost with an ephemeral
+container and its history is reviewable.
+
 All persistence goes through one Google Apps Script web-app endpoint stored in
 the `SCRIPT_URL` constant, which `api()`, `loadFromSheet()`, and
 `loadRecentOrdered()` all reference — change it in that one place.
