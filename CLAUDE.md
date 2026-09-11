@@ -166,6 +166,58 @@ the `SCRIPT_URL` constant, which `api()`, `loadFromSheet()`, and
   `toLocaleString('th-TH')`; catalog history dates are `DD/MM/YY` (Buddhist
   year, two digits) and parsed by `parseThaiDate`.
 
+## Where everything lives
+
+There is no local/permanent machine in this setup. Assistants run in a fresh
+ephemeral container that clones this repo at session start, so **the GitHub
+repo is the only durable store for code and catalog data** — anything not
+committed and pushed is lost when the session ends.
+
+| Data | Home | Updated by |
+|------|------|------------|
+| App code | `index.html` (this repo) | assistant, via PR |
+| Catalog snapshot (`CAT`/`SALES`/`BC`) | `data.js` (this repo) | assistant, from the owner's CW export |
+| Project guide | `CLAUDE.md` (this repo) | assistant |
+| Live orders (จด / สั่ง / รับของ) | Google Sheet "พระจันทร์เภสัช - ประวัติสั่งยา" (`SHEET_ID` in the Apps Script) | the app itself, at runtime |
+| Raw CW exports (.xlsx) | a folder on the owner's own computer | the owner |
+
+The raw CW exports are **not** reachable from the container — the owner
+attaches the file in chat when a refresh is wanted. Do not assume a local path
+or a Drive copy exists; ask for the file.
+
+## Catalog snapshot log
+
+Keep this current whenever `data.js` is regenerated — it is how the next
+session knows what is already covered and what to ask the owner to export.
+
+| Updated | Purchase history covers | CAT entries | Notes |
+|---------|------------------------|-------------|-------|
+| initial import | 01/2026 – 05/2026 | 4,660 | 8,463 history rows; ~8,500 barcodes; 4,354 SALES entries |
+
+To check coverage of the current snapshot without reading the huge data lines:
+
+```bash
+python3 - <<'EOF'
+import re, collections
+s = open('data.js', encoding='utf-8').read()
+d = re.findall(r'\["(\d{2}/\d{2}/\d{2})",', s)      # history dates DD/MM/YY
+c = collections.Counter(x.split('/')[2] + '-' + x.split('/')[1] for x in d)
+print(len(d), 'history rows'); [print(k, v) for k, v in sorted(c.items())]
+EOF
+```
+
+### Refresh procedure
+
+1. Ask the owner to export the goods-received report from **CW software** as
+   Excel, starting from the last covered month (overlap is fine — dedupe on
+   the GR reference) up to today, and to attach it in chat.
+2. **Merge, never replace.** Products absent from the new export must survive:
+   staff still search for items last received months ago. Add new products,
+   append purchase history, refresh `SALES`; never drop an existing `CAT` key.
+3. Regenerate only the three data lines in `data.js`; `index.html` is untouched.
+4. Verify (`node --check data.js`), report the before/after counts to the
+   owner, then update the table above in the same commit.
+
 ## Updating the data snapshot
 
 The catalog/barcode data is regenerated periodically and used to be embedded
