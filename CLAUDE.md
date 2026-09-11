@@ -193,6 +193,7 @@ session knows what is already covered and what to ask the owner to export.
 | Updated | Purchase history covers | CAT entries | Notes |
 |---------|------------------------|-------------|-------|
 | initial import | 01/2026 – 05/2026 | 4,660 | 8,463 history rows; ~8,500 barcodes; 4,354 SALES entries |
+| 2026-09-11 | 01/2026 – 09/2026 (**branch 3 only** for 05–09) | 5,051 | Merged `Spl_RecRet` CW export for สาขา 3, 01/05–11/09/2026: 2,090 GR docs / 6,526 lines, +391 products, history 8,463 → 11,307 rows. `SALES` and `BC` untouched (not in that report). Branches 1, 2, 4, 5 still only covered to 05/2026. |
 
 To check coverage of the current snapshot without reading the huge data lines:
 
@@ -205,6 +206,36 @@ c = collections.Counter(x.split('/')[2] + '-' + x.split('/')[1] for x in d)
 print(len(d), 'history rows'); [print(k, v) for k, v in sorted(c.items())]
 EOF
 ```
+
+### CW export format (`Spl_RecRet`)
+
+One sheet, a nested report rather than a flat table, and **one branch per
+file** (the branch is in the header, e.g. "พระจันทร์เภสัช สาขา 3"):
+
+```
+บริษัท ... (618  รายการ)                 <- supplier group header
+ลำดับ | วันที่(datetime) | GR-00-26-1499 | ... | รับสินค้า | 2040.0   <- document row
+      | P-6909 | ชื่อสินค้า | ... | lot | ... | อัน | 40             <- item rows
+```
+
+Parsing notes:
+- Column 4 of a history entry is the **document total**, repeated on every line
+  of that GR — not a unit price. The existing snapshot works the same way.
+- The GR prefix encodes the branch: `GR-00`→สาขา 3, `GR-01`→สาขา 1, `GR-02`→สาขา 2.
+- Rows may also be `คืนสินค้า` (returns); the 09/2026 export had none, so that
+  case is still unhandled — check before assuming.
+- Supplier names arrive with noise (`(สำนักงานใหญ่)`, `(ประเทศไทย)`, `(มหาชน)`)
+  and must be mapped onto the existing catalog spelling, or the same company
+  splits into two groups in the ordering UI. 19 of 105 needed mapping in 09/2026.
+- History is capped at the **2 most recent purchases per (product, supplier)**,
+  newest first — `hist[0]` must be the latest because `setLastQtyAll` and
+  `renderDrop` read it as "จำนวนล่าสุด".
+- Product names/units are **not** overwritten from CW: some CW names switch
+  Thai→English, which would break staff search. 89 names differed in 09/2026
+  and were deliberately left alone.
+
+Reusable scripts from the 09/2026 merge live in the session scratchpad
+(`parse_cw.py`, `merge_cw.py`); re-derive them from this section if gone.
 
 ### Refresh procedure
 
