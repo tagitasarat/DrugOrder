@@ -193,7 +193,7 @@ session knows what is already covered and what to ask the owner to export.
 | Updated | Purchase history covers | CAT entries | Notes |
 |---------|------------------------|-------------|-------|
 | initial import | 01/2026 – 05/2026 | 4,660 | 8,463 history rows; ~8,500 barcodes; 4,354 SALES entries |
-| 2026-09-11 | 01/2026 – 09/2026 (**branch 3 only** for 05–09) | 5,051 | Merged `Spl_RecRet` CW export for สาขา 3, 01/05–11/09/2026: 2,090 GR docs / 6,526 lines, +391 products, history 8,463 → 11,307 rows. `SALES` and `BC` untouched (not in that report). Branches 1, 2, 4, 5 still only covered to 05/2026. |
+| 2026-09-11 | 01/2026 – 09/2026 (branch 3 = the hub, so this covers all branches) | 5,051 | Merged `Spl_RecRet` CW export for สาขา 3, 01/05–11/09/2026: 2,090 GR docs / 6,526 lines, +391 products, history 8,463 → 11,307 rows. `SALES` and `BC` untouched (not in that report). Also repointed 311 products whose default supplier was an internal transfer, and sorted real suppliers ahead of internal ones; 749 still lack any real supplier. |
 
 To check coverage of the current snapshot without reading the huge data lines:
 
@@ -206,6 +206,28 @@ c = collections.Counter(x.split('/')[2] + '-' + x.split('/')[1] for x in d)
 print(len(d), 'history rows'); [print(k, v) for k, v in sorted(c.items())]
 EOF
 ```
+
+### สาขา 3 is the hub — one export covers every branch
+
+Branch 3 is the central warehouse: it receives from the real suppliers and
+then distributes to branches 1, 2, 4 and 5. So the other branches' own
+goods-received reports list the *supplier* as an internal transfer
+(`พระจันทร์3`, `พระจันทร์2`, …), which is useless when staff are deciding who
+to order from.
+
+Consequences:
+- **Only branch 3's export is needed** to refresh the catalog. `CAT` is global
+  (`ds` and `sups` are per-product, not per-branch), so branch 3's supplier
+  data automatically serves every branch.
+- Treat `พระจันทร์<n>`, `ไม่ทราบบริษัท` and `คลังยาสำรอง` as **internal, not
+  suppliers**. They may stay in `sups` (the history is still informative) but
+  must never be a product's default `ds` when a real company is known, and
+  they sort last in `sups`.
+- A product can only be repointed if a real supplier appears somewhere in its
+  history. After the 09/2026 merge, 749 products still default to
+  internal/unknown purely because no real supplier has ever been recorded for
+  them — a **longer** branch-3 export (further back than 05/2026) is what
+  fixes those, not exports from other branches.
 
 ### CW export format (`Spl_RecRet`)
 
