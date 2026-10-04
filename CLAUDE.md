@@ -155,7 +155,9 @@ the `SCRIPT_URL` constant, which `api()`, `loadFromSheet()`, and
   `ASK_NOTE` is the one-tap preset "สาขาอื่นมีของเหลือ ไปขอสาขาอื่นแทน": the
   owner sets it with 🔁 ขอสาขาอื่น, and branch staff close the loop with
   👍 รับทราบ (`ackAskOther`), which deletes **both** the hidden note row and the
-  item itself so the request visibly disappears once handled.
+  item itself so the request visibly disappears once handled. The รับทราบ
+  button is **staff-only** (`!isOwner`) — the owner sends the request and keeps
+  the 🔁 toggle, so acknowledging their own note would be meaningless.
 
 ## Conventions to follow
 
