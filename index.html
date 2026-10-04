@@ -1639,7 +1639,7 @@ function renderOrder(){
             ${recQty?`<button class="recBadge" data-code="${esc(it.code)}" data-branch="${esc(vb)}" data-rec="${recQty}" onclick="event.stopPropagation();useRec(this)">แนะนำ ${recQty}</button>`:''}
           </div>`:(qtyVal?`<span class="qtyBadge">${qtyVal} ${esc(it.unit)}</span>`:'')}
           ${isOwner&&!isWaitGoods?`<button class="btnSm" style="background:${it.ownerNote===ASK_NOTE?'#7c3aed':'#ede9fe'};color:${it.ownerNote===ASK_NOTE?'#fff':'#7c3aed'};border:1px solid #c4b5fd;font-size:10px;white-space:nowrap" title="บอกสาขาให้ไปขอของจากสาขาอื่นแทน" onclick="event.stopPropagation();askOtherRow(this)">🔁 ขอสาขาอื่น</button>`:''}
-          ${it.ownerNote===ASK_NOTE&&!isWaitGoods?`<button class="btnSm" style="background:#2d9b4e;color:#fff;border:none;font-size:10px;white-space:nowrap" title="รับทราบว่าจะไปขอจากสาขาอื่น แล้วเอารายการออก" onclick="event.stopPropagation();ackAskOther(this)">👍 รับทราบ</button>`:''}
+          ${!isOwner&&it.ownerNote===ASK_NOTE&&!isWaitGoods?`<button class="btnSm" style="background:#2d9b4e;color:#fff;border:none;font-size:10px;white-space:nowrap" title="รับทราบว่าจะไปขอจากสาขาอื่น แล้วเอารายการออก" onclick="event.stopPropagation();ackAskOther(this)">👍 รับทราบ</button>`:''}
           ${isOwner&&!isWaitGoods?`<button class="btnSm btnOrd" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();handleOrd(this)">✅</button>`:''}
           ${isWaitGoods?`<button class="btnRecv" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();receiveItem(this)">📥 รับของ</button>`:''}
           <button class="btnDel" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();handleDel(this)">✕</button>
