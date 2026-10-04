@@ -149,6 +149,13 @@ the `SCRIPT_URL` constant, which `api()`, `loadFromSheet()`, and
 - Print view (`openPrint`) and per-branch history/log (`showHist`/`openLog`).
 - Custom (off-catalog) items via `addCustom` — flagged `custom:true`,
   code does not start with `P-`.
+- **Owner notes** are stored as hidden rows (`code === ON_CODE`) through the
+  existing add/delete actions, so they need no backend change. An item with a
+  note is pinned to the top of its supplier group and highlighted.
+  `ASK_NOTE` is the one-tap preset "สาขาอื่นมีของเหลือ ไปขอสาขาอื่นแทน": the
+  owner sets it with 🔁 ขอสาขาอื่น, and branch staff close the loop with
+  👍 รับทราบ (`ackAskOther`), which deletes **both** the hidden note row and the
+  item itself so the request visibly disappears once handled.
 
 ## Conventions to follow
 

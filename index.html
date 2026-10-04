@@ -1252,6 +1252,20 @@ function askOtherRow(el){
   toggleAskOther(info.item,info.branch);
   renderOrderKeepScroll();
 }
+// ลูกน้องกดรับทราบว่าจะไปขอจากสาขาอื่นแทน → เอารายการออกจากลิสต์
+// (ทั้งโน้ตเจ้าของและตัวรายการ) เพื่อให้รู้ว่าเรื่องนี้จบแล้ว
+function ackAskOther(el){
+  const info=rowInfo(el); if(!info)return;
+  const item=info.item, branch=info.branch;
+  if(!confirm('รับทราบว่าจะไปขอจากสาขาอื่นแทนใช่ไหม?\n\n'+item.name+'\n\nรายการนี้จะถูกเอาออกจากรายการจด')) return;
+  persistOwnerNote(branch,item.code,'');          // ลบโน้ตเจ้าของในชีตด้วย
+  removeRowInPlace(branch,info.code,el,()=>{
+    orders[branch]=orders[branch].filter(i=>i!==item);
+    if(item.rowId) sheetDelete(branch,item.rowId);
+  });
+  if(isOwner)renderOTabs();
+  toast('👍 รับทราบแล้ว — เอาออกจากรายการ');
+}
 function supAllAskOther(branch,code,sup){
   const item=(orders[branch]||[]).find(i=>i.code===code);if(!item)return;
   toggleAskOther(item,branch);
@@ -1625,6 +1639,7 @@ function renderOrder(){
             ${recQty?`<button class="recBadge" data-code="${esc(it.code)}" data-branch="${esc(vb)}" data-rec="${recQty}" onclick="event.stopPropagation();useRec(this)">แนะนำ ${recQty}</button>`:''}
           </div>`:(qtyVal?`<span class="qtyBadge">${qtyVal} ${esc(it.unit)}</span>`:'')}
           ${isOwner&&!isWaitGoods?`<button class="btnSm" style="background:${it.ownerNote===ASK_NOTE?'#7c3aed':'#ede9fe'};color:${it.ownerNote===ASK_NOTE?'#fff':'#7c3aed'};border:1px solid #c4b5fd;font-size:10px;white-space:nowrap" title="บอกสาขาให้ไปขอของจากสาขาอื่นแทน" onclick="event.stopPropagation();askOtherRow(this)">🔁 ขอสาขาอื่น</button>`:''}
+          ${it.ownerNote===ASK_NOTE&&!isWaitGoods?`<button class="btnSm" style="background:#2d9b4e;color:#fff;border:none;font-size:10px;white-space:nowrap" title="รับทราบว่าจะไปขอจากสาขาอื่น แล้วเอารายการออก" onclick="event.stopPropagation();ackAskOther(this)">👍 รับทราบ</button>`:''}
           ${isOwner&&!isWaitGoods?`<button class="btnSm btnOrd" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();handleOrd(this)">✅</button>`:''}
           ${isWaitGoods?`<button class="btnRecv" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();receiveItem(this)">📥 รับของ</button>`:''}
           <button class="btnDel" data-code="${esc(it.code)}" data-branch="${esc(vb)}" onclick="event.stopPropagation();handleDel(this)">✕</button>
