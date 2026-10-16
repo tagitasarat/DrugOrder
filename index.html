@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ระบบสั่งยา – พระจันทร์เภสัช</title>
+<title>ระบบจดยาขาด – พระจันทร์เภสัช</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f0f4f8;--w:#fff;--pri:#1a56a0;--pli:#e8f0fb;--acc:#e63946;--grn:#2d9b4e;--bdr:#d1dce8;--txt:#1a2433;--mut:#6b7f96;--rad:12px}
@@ -202,7 +202,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 
 <div id="app">
   <header class="noPrint">
-    <div><div class="hLogo">🏥 พระจันทร์เภสัช</div><div class="hSub">ระบบสั่งยา</div></div>
+    <div><div class="hLogo">🏥 พระจันทร์เภสัช</div><div class="hSub">ระบบจดยาขาด</div></div>
     <div class="hRight">
       <span class="branchPill" id="hBranch"></span>
       <button class="changeBtn" onclick="logout()">เปลี่ยนสาขา</button>
@@ -287,7 +287,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 
       <div class="sticky">
         <div class="card">
-          <div class="cHead">🛒 รายการสั่งยา — <span id="orderBranch"></span><span class="badge" id="totBadge">0</span></div>
+          <div class="cHead">📝 รายการจดยาขาด — <span id="orderBranch"></span><span class="badge" id="totBadge">0</span></div>
           <div class="cBody">
             <div class="statusTabs" id="statusTabs">
               <button class="stTab active" data-st="รอสั่ง" onclick="setStatusFilter('รอสั่ง')">📝 รอสั่ง<span class="stcnt" id="cntWait">0</span></button>

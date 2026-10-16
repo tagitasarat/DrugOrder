@@ -4,7 +4,7 @@ Guidance for AI assistants (and humans) working in this repository.
 
 ## What this is
 
-A drug-ordering / inventory-reorder system for a Thai pharmacy chain
+A drug-shortage logging / reorder system ("ระบบจดยาขาด") for a Thai pharmacy chain
 ("พระจันทร์เภสัช" – Phra Chan Pharmacy), used by branch staff to build daily
 purchase orders and by the owner to oversee all branches. The app is two
 files: `index.html` (all UI + logic) and `data.js` (the large machine-generated
