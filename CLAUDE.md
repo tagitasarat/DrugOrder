@@ -108,6 +108,13 @@ detected up front (`checkRecentOrder`, `loadRecentOrdered`).
   badge and used by `useRec` / `setLastQtyAll`.
 - `BC` — `{ bc: { "<barcode>": "P-XXXX" }, gen: { "<generic>": ["P-..."] } }`
   (~8,500 barcodes). Drives barcode lookup and generic-name search.
+  Known gaps (10/2026): ~97% of products carry exactly **one** barcode — likely
+  a single pack size, so scanning a different pack (e.g. the box vs the strip)
+  misses; and ~3,500 barcodes point to product codes absent from `CAT` (never
+  received in the covered period), so they resolve to no product. Both need a
+  CW export listing every barcode per unit plus the full product master.
+  Always look up through `bcLookup()`, which also tolerates scanner
+  leading-zero differences (UPC-A 12 digits vs EAN-13 / GTIN-14).
 
 This data is a snapshot generated/exported elsewhere. Treat `CAT`/`SALES`/`BC`
 as machine-generated; do not hand-edit individual entries unless explicitly

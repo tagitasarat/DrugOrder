@@ -650,8 +650,8 @@ si.addEventListener('input',()=>{
   if(!q){drop.classList.remove('open');dropItems=[];return;}
   // Barcode detection: if query is all digits (8+) and matches a barcode, auto-pick
   const raw=si.value.trim();
-  if(/^[0-9]{8,}$/.test(raw) && BC.bc && BC.bc[raw]){
-    const code=BC.bc[raw];
+  if(/^[0-9]{8,}$/.test(raw) && bcLookup(raw)){
+    const code=bcLookup(raw);
     if(CAT[code]){
       pickDrug(code);
       toast('🔍 พบจาก barcode: '+CAT[code].n);
@@ -1888,16 +1888,31 @@ function handleBcInput(){
   closeScan();
   handleBarcode(bc);
 }
+// Barcode -> product code. Scanners disagree on leading zeros (UPC-A 12 digits
+// vs EAN-13 '0'+12, GTIN-14 '0'+13), so try those variants too.
+function bcLookup(raw){
+  if(!BC||!BC.bc||!raw) return null;
+  const d=String(raw).replace(/[^0-9]/g,'');
+  const t=d.replace(/^0+/,'');
+  const cand=[String(raw).trim(),d,t,'0'+t,'00'+t];
+  for(const k of cand){ if(k&&BC.bc[k]) return BC.bc[k]; }
+  return null;
+}
+// Thai message explaining why a scanned barcode could not be used
+function bcMissMsg(raw){
+  return bcLookup(raw)
+    ? '⚠️ บาร์โค้ด '+raw+' มีในระบบ แต่ยังไม่มีข้อมูลยาตัวนี้ (ยังไม่เคยรับเข้า)'
+    : '⚠️ ไม่พบบาร์โค้ด '+raw+' ในระบบ';
+}
 function handleBarcode(bc){
-  const clean=bc.replace(/[^0-9]/g,'');
-  const code=(BC.bc&&(BC.bc[bc]||BC.bc[clean]));
+  const code=bcLookup(bc);
   if(code&&CAT[code]){
     pickDrug(code);
     toast('🔍 พบ: '+CAT[code].n);
   } else {
     document.getElementById('si').value=bc;
     document.getElementById('si').dispatchEvent(new Event('input'));
-    toast('⚠️ ไม่พบ barcode '+bc+' ในระบบ');
+    toast(bcMissMsg(bc));
   }
 }
 
@@ -1961,11 +1976,10 @@ function handleRecvBcInput(){
   inp.focus(); // keep focus for next scan
 }
 function handleRecvBarcode(bc){
-  const clean=bc.replace(/[^0-9]/g,'');
-  const code=(BC.bc&&(BC.bc[bc]||BC.bc[clean]));
+  const code=bcLookup(bc);
   const vb=isOwner?viewBranch:curBranch;
   if(!code||!CAT[code]){
-    toast('⚠️ ไม่พบ barcode '+bc);
+    toast(bcMissMsg(bc));
     return;
   }
   const item=(orders[vb]||[]).find(i=>i.code===code&&i.status==='รอของ');
