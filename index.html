@@ -1080,10 +1080,14 @@ function receiveItem(el){
   const info=rowInfo(el); if(!info) return;
   const item=info.item, b=info.branch;
   toast('📥 รับของแล้ว: '+item.name);
+  // clear the receive search so staff can type the next item straight away
+  const ri=document.getElementById('recvSearchInput');
+  if(ri) ri.value='';
   removeRowInPlace(b,info.code,el,()=>{
     orders[b]=orders[b].filter(i=>i!==item);
     if(item.rowId) sheetReceived(b,item.rowId);
   });
+  if(ri) ri.focus({preventScroll:true});
 }
 
 function receiveAll(b){
