@@ -115,6 +115,17 @@ detected up front (`checkRecentOrder`, `loadRecentOrdered`).
   CW export listing every barcode per unit plus the full product master.
   Always look up through `bcLookup()`, which also tolerates scanner
   leading-zero differences (UPC-A 12 digits vs EAN-13 / GTIN-14).
+- **Pack units (10/2026)**: `CAT[code].u` is always the *smallest* CW unit, so
+  scanning a box used to show the strip. `tools/add_pack_units.py` now merges the
+  CW per-unit export (`catalog.json` from the ค้างส่งสินค้าสาขา project) into `BC`:
+  - `bc` gains every CW barcode it lacked (~4,450, mostly box/carton barcodes)
+  - `bu: { "<barcode>": "กล่อง" }` — only barcodes of a pack bigger than `CAT[code].u`
+  - `us: { "P-XXXX": { "กล่อง": 10 } }` — how many `CAT[code].u` per pack
+  Scanning (`handleBarcode` → `bcUnit()`) picks that pack as the item's `unit`
+  (`pickDrug(code, unit)`, meta shows "กล่อง (= 10 แผง)"). `SALES` and purchase
+  history are counted in `CAT[code].u`, so every recommendation goes through
+  `recIn()` / `packOf()` and is divided by the pack size, rounded up. Picking by
+  name still uses `CAT[code].u`. **Re-run the script after every data.js refresh.**
 
 This data is a snapshot generated/exported elsewhere. Treat `CAT`/`SALES`/`BC`
 as machine-generated; do not hand-edit individual entries unless explicitly

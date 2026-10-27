@@ -730,11 +730,12 @@ function hl(t,q){
 }
 
 // ── PICK DRUG ──
-function pickDrug(code){
+function pickDrug(code,unit){
   const d=CAT[code];if(!d)return;
-  selDrug={code,n:d.n,u:d.u,ds:d.ds,sups:d.sups,selSup:d.ds};
+  const u=unit||d.u;
+  selDrug={code,n:d.n,u,ds:d.ds,sups:d.sups,selSup:d.ds};
   document.getElementById('selName').textContent=d.n;
-  document.getElementById('selMeta').textContent=code+' | '+d.u;
+  document.getElementById('selMeta').textContent=code+' | '+u+(u!==d.u?' (= '+packOf(code,u)+' '+d.u+')':'');
   document.getElementById('selSup').textContent='🏢 '+d.ds+(d.sups.length>1?' (+'+(d.sups.length-1)+' บริษัท)':'')+' — บริษัทที่เลือก';
   document.getElementById('selBox').style.display='block';
   document.getElementById('noteWrap').style.display='block';
@@ -1160,11 +1161,12 @@ function openSupplierAllBranches(sup){
         <button class="btnSm btnOrdAll" onclick="supAllMarkBranch('${ea(b)}','${ea(sup)}')">✅ สั่งหมดสาขานี้</button>
       </div>`;
     its.forEach(it=>{
-      const rec=SALES[it.code]&&SALES[it.code][bKey]?SALES[it.code][bKey]:null;
+      const rec=recIn(it.code,bKey,it.unit);
       // Total recommendation across every branch (not just this one) so the
       // owner sees the full quantity to order from the supplier at once.
       let recAll=0;
       if(SALES[it.code]) Object.values(SALES[it.code]).forEach(v=>{recAll+=Number(v)||0;});
+      if(recAll) recAll=Math.ceil(recAll/packOf(it.code,it.unit));
       const qtyVal=it.qty!=null?it.qty:'';
       body+=`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #f5f7fa">
         <div style="flex:1;min-width:0">
@@ -1368,7 +1370,7 @@ function setLastQtyAll(el){
   const bKey=b.replace('สาขา ','');
   its.forEach(it=>{
     // Try SALES recommendation first
-    const rec=SALES[it.code]&&SALES[it.code][bKey];
+    const rec=recIn(it.code,bKey,it.unit);
     if(rec){
       it.qty=rec; set++;
       if(it.rowId) sheetQty(b,it.rowId,rec);
@@ -1380,7 +1382,7 @@ function setLastQtyAll(el){
     const supEntry=catD.sups.find(s=>s.s===sup)||catD.sups[0];
     const hist=supEntry?supEntry.h:[];
     if(hist&&hist[0]&&hist[0][1]){
-      it.qty=hist[0][1];
+      it.qty=Math.ceil(hist[0][1]/packOf(it.code,it.unit));
       if(it.rowId) sheetQty(b,it.rowId,it.qty);
       set++;
     }
@@ -1441,7 +1443,7 @@ function showMultiBranchOrder(code,curB,otherBranches,btnEl){
     const qty=it&&it.qty?it.qty:'';
     const note=it&&it.note?it.note:'';
     const bKey=b.replace('สาขา ','');
-    const rec=SALES[code]&&SALES[code][bKey]?SALES[code][bKey]:null;
+    const rec=recIn(code,bKey,it?it.unit:'');
     body+=`<label class="branchChk">
       <input type="checkbox" value="${esc(b)}" checked>
       <span class="branchChkName">${esc(b)}</span>
@@ -1607,7 +1609,7 @@ function renderOrder(){
     its.forEach(it=>{
       const qtyVal=it.qty!=null?it.qty:'';
       const bKey=vb.replace('สาขา ','');
-      const recQty=SALES[it.code]&&SALES[it.code][bKey]?SALES[it.code][bKey]:null;
+      const recQty=recIn(it.code,bKey,it.unit);
       const waitInfo=isWaitGoods&&it.orderedAt?`<span class="waitBadge ww">📦 สั่งเมื่อ ${esc(it.orderedAt)}</span>`:'';
       // "จดเมื่อ" timestamp (รอสั่ง only) so staff/owner see how long it has waited
       let addedBadge='';
@@ -1898,6 +1900,26 @@ function bcLookup(raw){
   for(const k of cand){ if(k&&BC.bc[k]) return BC.bc[k]; }
   return null;
 }
+// Pack scanned, when the barcode belongs to a pack bigger than CAT[code].u
+// (box/carton barcodes from the CW export: BC.bu). '' = the catalog unit.
+function bcUnit(raw){
+  if(!BC||!BC.bu||!raw) return '';
+  const d=String(raw).replace(/[^0-9]/g,'');
+  const t=d.replace(/^0+/,'');
+  const cand=[String(raw).trim(),d,t,'0'+t,'00'+t];
+  for(const k of cand){ if(k&&BC.bu[k]) return BC.bu[k]; }
+  return '';
+}
+// How many CAT[code].u are in one `unit` (BC.us); 1 for the catalog unit itself
+function packOf(code,unit){
+  const f=BC&&BC.us&&BC.us[code]&&BC.us[code][unit];
+  return f||1;
+}
+// SALES is counted in CAT[code].u, so convert for items ordered by the box
+function recIn(code,bKey,unit){
+  const r=SALES[code]&&SALES[code][bKey];
+  return r?Math.ceil(r/packOf(code,unit)):null;
+}
 // Thai message explaining why a scanned barcode could not be used
 function bcMissMsg(raw){
   return bcLookup(raw)
@@ -1907,8 +1929,9 @@ function bcMissMsg(raw){
 function handleBarcode(bc){
   const code=bcLookup(bc);
   if(code&&CAT[code]){
-    pickDrug(code);
-    toast('🔍 พบ: '+CAT[code].n);
+    const unit=bcUnit(bc);
+    pickDrug(code,unit);
+    toast('🔍 พบ: '+CAT[code].n+(unit?' · '+unit:''));
   } else {
     document.getElementById('si').value=bc;
     document.getElementById('si').dispatchEvent(new Event('input'));
