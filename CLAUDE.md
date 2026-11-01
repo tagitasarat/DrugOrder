@@ -90,6 +90,14 @@ has a ✕ per รอสั่ง row for this (`supAllDelete`, confirm → `shee
 The status tab filter is `statusFilter` (`setStatusFilter`), and the left
 card swaps between "add item" (รอสั่ง) and "receive search" (รอของ).
 
+**Urgent (⚡ ด่วน)** – staff tick "⚡ ด่วน" when adding (`urgentChk`, and
+`cUrgent` in the custom form). The sheet has no urgent column, so it is stored
+as a note prefix `⚡ด่วน` (`withUrgent`); `isUrgent(i)` = note contains "ด่วน"
+but not "ไม่ด่วน". The extra status tab `ด่วน` shows urgent รอสั่ง items
+(`inTab(i)` replaces every `status===statusFilter` check; count `cntUrgent`).
+Urgent rows get a red badge, sort right after owner-note rows, and the owner's
+branch tabs show `⚡n`.
+
 `REORDER_DAYS = 3`: an item already `รอของ` can be re-ordered ("ตามของ")
 only after this many days (`showDupWarning` / `doReorder`). Duplicate adds are
 detected up front (`checkRecentOrder`, `loadRecentOrdered`).
