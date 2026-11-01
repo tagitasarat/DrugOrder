@@ -1179,6 +1179,7 @@ function openSupplierAllBranches(sup){
         <button class="btnSm btnCopy" title="คัดลอกรายการนี้" onclick="supAllCopyItem('${ea(b)}','${ea(it.code)}')">📋</button>
         <button class="btnSm" style="background:${it.ownerNote===ASK_NOTE?'#7c3aed':'#ede9fe'};color:${it.ownerNote===ASK_NOTE?'#fff':'#7c3aed'};border:1px solid #c4b5fd;white-space:nowrap" title="บอกสาขาให้ไปขอของจากสาขาอื่นแทน" onclick="supAllAskOther('${ea(b)}','${ea(it.code)}','${ea(sup)}')">🔁 ขอสาขาอื่น</button>
         <button class="btnSm btnOrd" title="สั่งแล้ว" onclick="supAllMarkOrdered('${ea(b)}','${ea(it.code)}','${ea(sup)}')">✅</button>
+        <button class="btnSm btnDel" title="ลบรายการ (ไม่ต้องสั่งแล้ว)" onclick="supAllDelete('${ea(b)}','${ea(it.code)}','${ea(sup)}')">✕</button>
       </div>`;
     });
     body+=`</div>`;
@@ -1209,6 +1210,19 @@ function supAllMarkOrdered(branch,code,sup){
   if(isOwner)renderOTabs();
   renderOrder();
   toast('📦 สั่งแล้ว: '+item.name+' ('+branch+')');
+  openSupplierAllBranches(sup);
+}
+// ✕ in the consolidated view: drop a รอสั่ง item that no longer needs ordering
+// (bought elsewhere / already handed out). Ticking ✅ instead would park it in
+// รอของ waiting for a รับของ that never comes.
+function supAllDelete(branch,code,sup){
+  const item=(orders[branch]||[]).find(i=>i.code===code&&(i.status||'รอสั่ง')==='รอสั่ง');if(!item)return;
+  if(!confirm('ลบ "'+item.name+'" ('+branch+') ออกจากรายการ?\n\nใช้เมื่อไม่ต้องสั่งแล้ว เช่น สั่งไปแล้ว หรือแจกของให้สาขาแล้ว')) return;
+  orders[branch]=orders[branch].filter(i=>i!==item);
+  if(item.rowId) sheetDelete(branch,item.rowId);
+  if(isOwner)renderOTabs();
+  renderOrder();
+  toast('🗑 ลบแล้ว: '+item.name+' ('+branch+')');
   openSupplierAllBranches(sup);
 }
 function supAllMarkBranch(branch,sup){
