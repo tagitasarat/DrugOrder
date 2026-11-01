@@ -118,6 +118,17 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 .urgChk input{width:18px;height:18px;accent-color:#dc2626}
 .urgBadge{display:inline-block;background:#dc2626;color:#fff;border-radius:6px;padding:0 6px;font-size:10px;font-weight:700;vertical-align:middle}
 .oTab .urg{background:#dc2626;color:#fff;border-radius:20px;padding:0 6px;font-size:10px;margin-left:3px}
+.stTab.stAppt .stcnt{background:#2563eb}
+.stTab.stAppt.active{border-color:#2563eb;background:#eff6ff;color:#2563eb}
+.apptChk{display:inline-flex;align-items:center;gap:6px;margin:6px 0 0 14px;font-size:13px;font-weight:700;color:#2563eb;cursor:pointer}
+.apptChk input{width:18px;height:18px;accent-color:#2563eb}
+.apptBox{margin-top:6px;padding:8px;border:1.5px solid #bfdbfe;background:#eff6ff;border-radius:8px;display:flex;flex-direction:column;gap:6px}
+.apptBox .apptGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.apptBox input,.apptBox select{width:100%;min-width:0;box-sizing:border-box;font-family:'Sarabun',sans-serif;font-size:13px;padding:6px 8px;border:1px solid #bfdbfe;border-radius:6px;background:#fff}
+.apptBox .apptHint{font-size:10px;color:#64748b}
+.apptBadge{display:inline-block;background:#2563eb;color:#fff;border-radius:6px;padding:0 6px;font-size:10px;font-weight:700;vertical-align:middle}
+.iNote.appt{color:#1e3a8a;background:#dbeafe}
+.oTab .appt{background:#2563eb;color:#fff;border-radius:20px;padding:0 6px;font-size:10px;margin-left:3px}
 .waitBadge{font-size:10px;font-weight:600;padding:1px 7px;border-radius:4px;white-space:nowrap}
 .waitBadge.ws{background:#e6f7eb;color:#2d9b4e}
 .waitBadge.ww{background:#fff3cd;color:#856404}
@@ -269,7 +280,8 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
             <div id="noteWrap" style="display:none" class="row">
               <span class="lbl">หมายเหตุ</span>
               <textarea id="noteInput" style="height:44px;resize:none;font-size:12px" placeholder="เช่น รอสต็อก, ลูกค้ารอ..."></textarea>
-              <label class="urgChk"><input type="checkbox" id="urgentChk"> ⚡ ด่วน</label>
+              <label class="urgChk"><input type="checkbox" id="urgentChk"> ⚡ ด่วน</label><label class="apptChk"><input type="checkbox" id="nApptChk" onchange="toggleAppt('n')"> 📅 นัดลูกค้า</label>
+              <div class="apptBox" id="nApptBox" style="display:none"></div>
             </div>
             <div id="addWrap" style="display:none">
               <button class="btn btnPri" onclick="addFromDB()">➕ เพิ่มเข้ารายการสั่ง</button>
@@ -284,7 +296,8 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
                   <div class="row"><span class="lbl">หน่วย</span><input type="text" id="cUnit" placeholder="แผง, ขวด..."></div>
                 </div>
                 <div class="row"><span class="lbl">หมายเหตุ</span><input type="text" id="cNote" placeholder="เช่น ลูกค้ารอ"></div>
-                <label class="urgChk"><input type="checkbox" id="cUrgent"> ⚡ ด่วน</label>
+                <label class="urgChk"><input type="checkbox" id="cUrgent"> ⚡ ด่วน</label><label class="apptChk"><input type="checkbox" id="cApptChk" onchange="toggleAppt('c')"> 📅 นัดลูกค้า</label>
+                <div class="apptBox" id="cApptBox" style="display:none"></div>
                 <button class="btn btnWarn" onclick="addCustom()">➕ เพิ่มรายการนี้</button>
               </div>
             </details>
@@ -301,6 +314,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
               <button class="stTab active" data-st="รอสั่ง" onclick="setStatusFilter('รอสั่ง')">📝 รอสั่ง<span class="stcnt" id="cntWait">0</span></button>
               <button class="stTab" data-st="รอของ" onclick="setStatusFilter('รอของ')">📦 รอของ<span class="stcnt" id="cntOrdered">0</span></button>
               <button class="stTab stUrg" data-st="ด่วน" onclick="setStatusFilter('ด่วน')">⚡ ด่วน<span class="stcnt" id="cntUrgent">0</span></button>
+              <button class="stTab stAppt" data-st="นัดลูกค้า" onclick="setStatusFilter('นัดลูกค้า')">📅 นัดลูกค้า<span class="stcnt" id="cntAppt">0</span></button>
             </div>
             <div id="recvScanArea" style="display:none;margin-bottom:10px">
               <div style="background:#000;border-radius:8px;overflow:hidden;position:relative">
@@ -380,16 +394,79 @@ let statusFilter='รอสั่ง'; // current status tab
 // "ด่วน" (urgent) is not a separate sheet column: it is a ⚡ด่วน prefix in the
 // staff note (so no Apps Script change), and any note mentioning ด่วน counts.
 const URGENT_TAG='⚡ด่วน';
-function isUrgent(i){const n=i&&i.note||'';return /ด่วน/.test(n)&&!/ไม่ด่วน/.test(n);}
+// "นัดลูกค้า" (customer appointment) is a 📅นัดลูกค้า prefix the same way:
+// "📅นัดลูกค้า · name · โทร phone · นัด when · staff note" (all parts optional).
+// An appointment item always counts as urgent too.
+const APPT_TAG='📅นัดลูกค้า';
+function isAppt(i){return /นัดลูกค้า/.test(i&&i.note||'');}
+function isUrgent(i){const n=i&&i.note||'';return isAppt(i)||(/ด่วน/.test(n)&&!/ไม่ด่วน/.test(n));}
 function withUrgent(note,on){
   note=String(note||'').trim();
   if(!on||/ด่วน/.test(note))return note;
   return note?URGENT_TAG+' · '+note:URGENT_TAG;
 }
-// Items in the current status tab; the ด่วน tab = รอสั่ง items flagged urgent
+// Items in the current status tab; the ด่วน / นัดลูกค้า tabs = รอสั่ง items flagged that way
 function inTab(i){
   const s=i.status||'รอสั่ง';
-  return statusFilter==='ด่วน'?(s==='รอสั่ง'&&isUrgent(i)):s===statusFilter;
+  if(statusFilter==='ด่วน')return s==='รอสั่ง'&&isUrgent(i);
+  if(statusFilter==='นัดลูกค้า')return s==='รอสั่ง'&&isAppt(i);
+  return s===statusFilter;
+}
+// ── Customer appointment fields (form prefix 'n' = add from list, 'c' = custom item) ──
+const TH_WD=['อา','จ','อ','พ','พฤ','ศ','ส'], TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function fmtApptDay(d){return TH_WD[d.getDay()]+' '+d.getDate()+' '+TH_MON[d.getMonth()];}
+function apptBoxHtml(p){
+  return `<div class="apptGrid">
+    <input type="text" id="${p}ApptName" placeholder="ชื่อลูกค้า" autocomplete="off">
+    <input type="tel" id="${p}ApptPhone" placeholder="เบอร์โทร" autocomplete="off">
+  </div>
+  <div class="apptGrid">
+    <select id="${p}ApptWhen" onchange="toggleAppt('${p}')">
+      <option value="">นัดวันไหน</option><option value="today">วันนี้</option><option value="tomorrow">พรุ่งนี้</option>
+      <option value="3d">ภายใน 2-3 วัน</option><option value="week">ภายใน 1 สัปดาห์</option><option value="date">เลือกวันที่…</option>
+    </select>
+    <input type="time" id="${p}ApptTime" title="เวลานัด">
+  </div>
+  <input type="date" id="${p}ApptDate" style="display:none">
+  <div class="apptHint">ไม่บังคับกรอก · รายการนัดลูกค้านับเป็นยาด่วนด้วย</div>`;
+}
+const urgChkOf=p=>document.getElementById(p==='c'?'cUrgent':'urgentChk');
+function toggleAppt(p){
+  const on=document.getElementById(p+'ApptChk').checked, box=document.getElementById(p+'ApptBox');
+  if(on&&!box.innerHTML)box.innerHTML=apptBoxHtml(p);
+  box.style.display=on?'':'none';
+  const u=urgChkOf(p); if(on)u.checked=true; u.disabled=on;
+  const w=document.getElementById(p+'ApptWhen');
+  if(w)document.getElementById(p+'ApptDate').style.display=w.value==='date'?'':'none';
+}
+function resetAppt(p){
+  document.getElementById(p+'ApptChk').checked=false;
+  document.getElementById(p+'ApptBox').innerHTML='';
+  toggleAppt(p);
+}
+function apptWhenText(p){
+  const w=document.getElementById(p+'ApptWhen').value, t=document.getElementById(p+'ApptTime').value;
+  const day=n=>{const d=new Date();d.setDate(d.getDate()+n);return fmtApptDay(d);};
+  let s='';
+  if(w==='today')s='วันนี้ ('+day(0)+')';
+  else if(w==='tomorrow')s='พรุ่งนี้ ('+day(1)+')';
+  else if(w==='3d')s='ภายใน 2-3 วัน (ถึง '+day(3)+')';
+  else if(w==='week')s='ภายใน 1 สัปดาห์ (ถึง '+day(7)+')';
+  else if(w==='date'){const v=document.getElementById(p+'ApptDate').value;if(v){const [y,m,d]=v.split('-').map(Number);s=fmtApptDay(new Date(y,m-1,d));}}
+  if(t)s=(s?s+' ':'')+t+' น.';
+  return s;
+}
+// Final note for a new item: appointment prefix (if ticked) else ⚡ด่วน (if ticked)
+function buildNote(p,note,urgent){
+  note=String(note||'').trim();
+  if(!document.getElementById(p+'ApptChk').checked)return withUrgent(note,urgent);
+  const g=id=>document.getElementById(p+id).value.trim(), when=apptWhenText(p);
+  const parts=[APPT_TAG];
+  if(g('ApptName'))parts.push(g('ApptName'));
+  if(g('ApptPhone'))parts.push('โทร '+g('ApptPhone'));
+  if(when)parts.push('นัด '+when);
+  if(note)parts.push(note);
+  return parts.join(' · ');
 }
 let isLoading=false; // true while initial Sheets load in progress (locks add input)
 const REORDER_DAYS=3; // days before ตามของ allowed
@@ -616,9 +693,9 @@ function hydrateCache(b){
 // ── OWNER TABS ──
 function renderOTabs(){
   document.getElementById('oTabsWrap').innerHTML=BRANCHES.map(b=>{
-    const wait=orders[b].filter(i=>(i.status||'รอสั่ง')==='รอสั่ง'), n=wait.length, u=wait.filter(isUrgent).length;
+    const wait=orders[b].filter(i=>(i.status||'รอสั่ง')==='รอสั่ง'), n=wait.length, u=wait.filter(isUrgent).length, a=wait.filter(isAppt).length;
     return `<button class="oTab ${b===viewBranch?'active':''}" onclick="switchView('${b}')">
-      ${b}<span class="cnt ${n===0?'z':''}">${n}</span>${u?`<span class="urg">⚡${u}</span>`:''}</button>`;
+      ${b}<span class="cnt ${n===0?'z':''}">${n}</span>${u?`<span class="urg">⚡${u}</span>`:''}${a?`<span class="appt">📅${a}</span>`:''}</button>`;
   }).join('');
   updateLabels();
 }
@@ -884,7 +961,7 @@ function doReorder(code, branch){
 function addFromDB(){
   if(isLoading){toast('⏳ กำลังโหลดข้อมูล รอสักครู่');return;}
   if(!selDrug)return;
-  const note=withUrgent(document.getElementById('noteInput').value,document.getElementById('urgentChk').checked);
+  const note=buildNote('n',document.getElementById('noteInput').value,document.getElementById('urgentChk').checked);
   const b=activeBranch();
   // Check existing item in รอสั่ง or รอของ
   const existing=orders[b].find(i=>i.code===selDrug.code&&!i.custom);
@@ -910,13 +987,14 @@ function addCustom(){
   if(!name){toast('กรุณาใส่ชื่อยา');return;}
   const sup=document.getElementById('cSup').value.trim()||'ไม่ทราบบริษัท';
   const unit=document.getElementById('cUnit').value.trim()||'-';
-  const note=withUrgent(document.getElementById('cNote').value,document.getElementById('cUrgent').checked);
+  const note=buildNote('c',document.getElementById('cNote').value,document.getElementById('cUrgent').checked);
   const b=activeBranch();
   const rowId=Date.now()+'-'+Math.random().toString(36).slice(2,7);
   const item={code:'C'+rowId,name,unit,supplier:sup,note,custom:true,branch:b,sups:[{s:sup,h:[]}],rowId};
   orders[b].push(item);
   ['cName','cSup','cUnit','cNote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cUrgent').checked=false;
+  resetAppt('c');
   toast('เพิ่ม '+name);
   if(isOwner)renderOTabs();
   renderOrder();
@@ -928,6 +1006,7 @@ function resetForm(){
   document.getElementById('noteWrap').style.display='none';
   document.getElementById('addWrap').style.display='none';
   document.getElementById('urgentChk').checked=false;
+  resetAppt('n');
   si.value='';drop.classList.remove('open');dropItems=[];
   setTimeout(()=>si.focus(),50);
 }
@@ -989,7 +1068,7 @@ function updateOrderBarCounts(b){
   // If nothing left in this tab, show empty state
   if(!shown.length){
     const body=document.getElementById('orderBody');
-    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':statusFilter==='ด่วน'?'ไม่มีรายการด่วน':'ยังไม่มีรายการรอของ';
+    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':statusFilter==='ด่วน'?'ไม่มีรายการด่วน':statusFilter==='นัดลูกค้า'?'ไม่มีรายการนัดลูกค้า':'ยังไม่มีรายการรอของ';
     body.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:8px">💊</div><div style="font-size:12px">'+msg+'</div></div>';
   } else {
     // update sBar counts
@@ -1603,12 +1682,13 @@ function renderOrder(){
   document.getElementById('cntWait').textContent=waitOrder.length;
   document.getElementById('cntOrdered').textContent=waitGoods.length;
   document.getElementById('cntUrgent').textContent=waitOrder.filter(isUrgent).length;
+  document.getElementById('cntAppt').textContent=waitOrder.filter(isAppt).length;
   // Filter by current tab
   const shown=all.filter(i=>inTab(i));
   updateLabels();
   const body=document.getElementById('orderBody');
   if(!shown.length){
-    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':statusFilter==='ด่วน'?'ไม่มีรายการด่วน':'ยังไม่มีรายการรอของ';
+    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':statusFilter==='ด่วน'?'ไม่มีรายการด่วน':statusFilter==='นัดลูกค้า'?'ไม่มีรายการนัดลูกค้า':'ยังไม่มีรายการรอของ';
     body.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:8px">💊</div><div style="font-size:12px">'+msg+'</div></div>';
     document.getElementById('totBadge').textContent=shown.length;
     document.getElementById('totItems').textContent=shown.length;
@@ -1670,10 +1750,10 @@ function renderOrder(){
       }
       html+=`<div class="iRow${it.ownerNote?' hasOwnerNote':''}" data-code="${esc(it.code)}" data-branch="${esc(vb)}" data-rowid="${esc(it.rowId||'')}" onclick="handleRowClick(this)">
         <div>
-          <div class="iName">${isUrgent(it)&&(it.status||'รอสั่ง')==='รอสั่ง'?'<span class="urgBadge">⚡ ด่วน</span> ':''}${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''} <span class="copyIcon" data-name="${esc(it.name)}" onclick="event.stopPropagation();copyName(this)" title="คัดลอกชื่อ">📋</span></div>
+          <div class="iName">${(it.status||'รอสั่ง')==='รอสั่ง'?(isAppt(it)?'<span class="apptBadge">📅 นัดลูกค้า</span> ':isUrgent(it)?'<span class="urgBadge">⚡ ด่วน</span> ':''):''}${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''} <span class="copyIcon" data-name="${esc(it.name)}" onclick="event.stopPropagation();copyName(this)" title="คัดลอกชื่อ">📋</span></div>
           ${it.ownerNote?`<div class="ownerNoteRow">👑 ${esc(it.ownerNote)}</div>`:''}
           <div class="iMeta">${it.custom?'':esc(it.code)} | ${esc(it.unit)}</div>
-          ${it.note?`<span class="iNote">📝 ${esc(it.note)}</span>`:''}
+          ${it.note?`<span class="iNote${isAppt(it)?' appt':''}">📝 ${esc(it.note)}</span>`:''}
           ${addedBadge}
           ${waitInfo}
           ${multiBtn}
