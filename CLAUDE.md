@@ -82,6 +82,11 @@ get the branch currently in view regardless of role.
 3. **Received** – item removed from `orders` (`receiveItem` / `receiveAll` /
    barcode auto-receive in `handleRecvBarcode`).
 
+Items that no longer need ordering (bought elsewhere, already handed out) are
+**deleted**, not ticked ✅ — a ✅ parks them in `รอของ` waiting for a รับของ that
+never comes. The owner's supplier "🔀 รวมสาขา" modal (`openSupplierAllBranches`)
+has a ✕ per รอสั่ง row for this (`supAllDelete`, confirm → `sheetDelete`).
+
 The status tab filter is `statusFilter` (`setStatusFilter`), and the left
 card swaps between "add item" (รอสั่ง) and "receive search" (รอของ).
 
