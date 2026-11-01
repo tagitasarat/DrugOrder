@@ -112,6 +112,12 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
 .stTab.active{border-color:var(--pri);background:var(--pli);color:var(--pri)}
 .stTab .stcnt{display:inline-block;background:var(--mut);color:#fff;border-radius:20px;padding:0 6px;font-size:10px;margin-left:3px}
 .stTab.active .stcnt{background:var(--pri)}
+.stTab.stUrg .stcnt{background:#dc2626}
+.stTab.stUrg.active{border-color:#dc2626;background:#fef2f2;color:#dc2626}
+.urgChk{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:13px;font-weight:700;color:#dc2626;cursor:pointer}
+.urgChk input{width:18px;height:18px;accent-color:#dc2626}
+.urgBadge{display:inline-block;background:#dc2626;color:#fff;border-radius:6px;padding:0 6px;font-size:10px;font-weight:700;vertical-align:middle}
+.oTab .urg{background:#dc2626;color:#fff;border-radius:20px;padding:0 6px;font-size:10px;margin-left:3px}
 .waitBadge{font-size:10px;font-weight:600;padding:1px 7px;border-radius:4px;white-space:nowrap}
 .waitBadge.ws{background:#e6f7eb;color:#2d9b4e}
 .waitBadge.ww{background:#fff3cd;color:#856404}
@@ -262,7 +268,8 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
             </div>
             <div id="noteWrap" style="display:none" class="row">
               <span class="lbl">หมายเหตุ</span>
-              <textarea id="noteInput" style="height:44px;resize:none;font-size:12px" placeholder="เช่น ด่วน, รอสต็อก..."></textarea>
+              <textarea id="noteInput" style="height:44px;resize:none;font-size:12px" placeholder="เช่น รอสต็อก, ลูกค้ารอ..."></textarea>
+              <label class="urgChk"><input type="checkbox" id="urgentChk"> ⚡ ด่วน</label>
             </div>
             <div id="addWrap" style="display:none">
               <button class="btn btnPri" onclick="addFromDB()">➕ เพิ่มเข้ารายการสั่ง</button>
@@ -276,7 +283,8 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
                   <div class="row"><span class="lbl">บริษัท</span><input type="text" id="cSup" placeholder="ถ้าไม่ทราบเว้นว่าง"></div>
                   <div class="row"><span class="lbl">หน่วย</span><input type="text" id="cUnit" placeholder="แผง, ขวด..."></div>
                 </div>
-                <div class="row"><span class="lbl">หมายเหตุ</span><input type="text" id="cNote" placeholder="เช่น ด่วน"></div>
+                <div class="row"><span class="lbl">หมายเหตุ</span><input type="text" id="cNote" placeholder="เช่น ลูกค้ารอ"></div>
+                <label class="urgChk"><input type="checkbox" id="cUrgent"> ⚡ ด่วน</label>
                 <button class="btn btnWarn" onclick="addCustom()">➕ เพิ่มรายการนี้</button>
               </div>
             </details>
@@ -292,6 +300,7 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
             <div class="statusTabs" id="statusTabs">
               <button class="stTab active" data-st="รอสั่ง" onclick="setStatusFilter('รอสั่ง')">📝 รอสั่ง<span class="stcnt" id="cntWait">0</span></button>
               <button class="stTab" data-st="รอของ" onclick="setStatusFilter('รอของ')">📦 รอของ<span class="stcnt" id="cntOrdered">0</span></button>
+              <button class="stTab stUrg" data-st="ด่วน" onclick="setStatusFilter('ด่วน')">⚡ ด่วน<span class="stcnt" id="cntUrgent">0</span></button>
             </div>
             <div id="recvScanArea" style="display:none;margin-bottom:10px">
               <div style="background:#000;border-radius:8px;overflow:hidden;position:relative">
@@ -368,6 +377,20 @@ let selDrug=null, pinBuf='';
 let dropItems=[], dropIdx=-1;
 let histCtx=null; // {branch, code} for change-supplier context
 let statusFilter='รอสั่ง'; // current status tab
+// "ด่วน" (urgent) is not a separate sheet column: it is a ⚡ด่วน prefix in the
+// staff note (so no Apps Script change), and any note mentioning ด่วน counts.
+const URGENT_TAG='⚡ด่วน';
+function isUrgent(i){const n=i&&i.note||'';return /ด่วน/.test(n)&&!/ไม่ด่วน/.test(n);}
+function withUrgent(note,on){
+  note=String(note||'').trim();
+  if(!on||/ด่วน/.test(note))return note;
+  return note?URGENT_TAG+' · '+note:URGENT_TAG;
+}
+// Items in the current status tab; the ด่วน tab = รอสั่ง items flagged urgent
+function inTab(i){
+  const s=i.status||'รอสั่ง';
+  return statusFilter==='ด่วน'?(s==='รอสั่ง'&&isUrgent(i)):s===statusFilter;
+}
 let isLoading=false; // true while initial Sheets load in progress (locks add input)
 const REORDER_DAYS=3; // days before ตามของ allowed
 function setAddLock(lock){
@@ -593,9 +616,9 @@ function hydrateCache(b){
 // ── OWNER TABS ──
 function renderOTabs(){
   document.getElementById('oTabsWrap').innerHTML=BRANCHES.map(b=>{
-    const n=orders[b].filter(i=>(i.status||'รอสั่ง')==='รอสั่ง').length;
+    const wait=orders[b].filter(i=>(i.status||'รอสั่ง')==='รอสั่ง'), n=wait.length, u=wait.filter(isUrgent).length;
     return `<button class="oTab ${b===viewBranch?'active':''}" onclick="switchView('${b}')">
-      ${b}<span class="cnt ${n===0?'z':''}">${n}</span></button>`;
+      ${b}<span class="cnt ${n===0?'z':''}">${n}</span>${u?`<span class="urg">⚡${u}</span>`:''}</button>`;
   }).join('');
   updateLabels();
 }
@@ -861,7 +884,7 @@ function doReorder(code, branch){
 function addFromDB(){
   if(isLoading){toast('⏳ กำลังโหลดข้อมูล รอสักครู่');return;}
   if(!selDrug)return;
-  const note=document.getElementById('noteInput').value.trim();
+  const note=withUrgent(document.getElementById('noteInput').value,document.getElementById('urgentChk').checked);
   const b=activeBranch();
   // Check existing item in รอสั่ง or รอของ
   const existing=orders[b].find(i=>i.code===selDrug.code&&!i.custom);
@@ -887,12 +910,13 @@ function addCustom(){
   if(!name){toast('กรุณาใส่ชื่อยา');return;}
   const sup=document.getElementById('cSup').value.trim()||'ไม่ทราบบริษัท';
   const unit=document.getElementById('cUnit').value.trim()||'-';
-  const note=document.getElementById('cNote').value.trim();
+  const note=withUrgent(document.getElementById('cNote').value,document.getElementById('cUrgent').checked);
   const b=activeBranch();
   const rowId=Date.now()+'-'+Math.random().toString(36).slice(2,7);
   const item={code:'C'+rowId,name,unit,supplier:sup,note,custom:true,branch:b,sups:[{s:sup,h:[]}],rowId};
   orders[b].push(item);
   ['cName','cSup','cUnit','cNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cUrgent').checked=false;
   toast('เพิ่ม '+name);
   if(isOwner)renderOTabs();
   renderOrder();
@@ -903,6 +927,7 @@ function resetForm(){
   document.getElementById('selBox').style.display='none';
   document.getElementById('noteWrap').style.display='none';
   document.getElementById('addWrap').style.display='none';
+  document.getElementById('urgentChk').checked=false;
   si.value='';drop.classList.remove('open');dropItems=[];
   setTimeout(()=>si.focus(),50);
 }
@@ -916,11 +941,11 @@ function removeItem(b,code){
 }
 function clearBranch(){
   const b=activeBranch();
-  const toClear=orders[b].filter(i=>(i.status||'รอสั่ง')===statusFilter);
+  const toClear=orders[b].filter(i=>inTab(i));
   if(!toClear.length)return;
   if(!confirm('ล้างรายการ "'+statusFilter+'" ของ '+b+'? ('+toClear.length+' รายการ)'))return;
   toClear.forEach(i=>{ if(i.rowId) sheetDelete(b,i.rowId); });
-  orders[b]=orders[b].filter(i=>(i.status||'รอสั่ง')!==statusFilter);
+  orders[b]=orders[b].filter(i=>!inTab(i));
   if(isOwner)renderOTabs();renderOrder();
 }
 
@@ -953,7 +978,7 @@ function removeRowInPlace(b,code,btnEl,dataUpdateFn){
 }
 
 function updateOrderBarCounts(b){
-  const shown=(orders[b]||[]).filter(i=>(i.status||'รอสั่ง')===statusFilter);
+  const shown=(orders[b]||[]).filter(i=>inTab(i));
   const sups=new Set(shown.map(i=>i.supplier));
   const totBadge=document.getElementById('totBadge');
   const totItems=document.getElementById('totItems');
@@ -964,7 +989,7 @@ function updateOrderBarCounts(b){
   // If nothing left in this tab, show empty state
   if(!shown.length){
     const body=document.getElementById('orderBody');
-    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':'ยังไม่มีรายการรอของ';
+    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':statusFilter==='ด่วน'?'ไม่มีรายการด่วน':'ยังไม่มีรายการรอของ';
     body.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:8px">💊</div><div style="font-size:12px">'+msg+'</div></div>';
   } else {
     // update sBar counts
@@ -1110,7 +1135,7 @@ function sheetReorder(branch,rowId){
 
 // ── COPY / EXPORT ──
 function copySupplier(b,sup){
-  const items=orders[b].filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')===statusFilter);
+  const items=orders[b].filter(i=>i.supplier===sup&&inTab(i));
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const lines=['บริษัท: '+sup,'สาขา: '+b,'วันที่: '+date,'---'];
@@ -1119,7 +1144,7 @@ function copySupplier(b,sup){
   navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy แล้ว ('+items.length+' รายการ)'));
 }
 function exportSupplier(b,sup){
-  const items=orders[b].filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')===statusFilter);
+  const items=orders[b].filter(i=>i.supplier===sup&&inTab(i));
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const rows=[['ลำดับ','รหัส','ชื่อยา','หน่วย','จำนวน','หมายเหตุ','สาขา','วันที่']];
@@ -1136,7 +1161,7 @@ function exportSupplier(b,sup){
 function supplierAcrossBranches(sup){
   const out=[];
   BRANCHES.forEach(b=>{
-    const its=(orders[b]||[]).filter(i=>i.supplier===sup&&(i.status||'รอสั่ง')===statusFilter);
+    const its=(orders[b]||[]).filter(i=>i.supplier===sup&&inTab(i));
     if(its.length) out.push([b,its]);
   });
   return out;
@@ -1344,7 +1369,7 @@ function copyName(el){
 }
 function copyAll(){
   const vb=isOwner?viewBranch:curBranch;
-  const items=(orders[vb]||[]).filter(i=>(i.status||'รอสั่ง')===statusFilter);
+  const items=(orders[vb]||[]).filter(i=>inTab(i));
   if(!items.length){toast('ไม่มีรายการ');return;}
   const date=document.getElementById('orderDate').value;
   const lines=['สาขา: '+vb,'วันที่: '+date,'---'];
@@ -1577,12 +1602,13 @@ function renderOrder(){
   const waitGoods=all.filter(i=>i.status==='รอของ');
   document.getElementById('cntWait').textContent=waitOrder.length;
   document.getElementById('cntOrdered').textContent=waitGoods.length;
+  document.getElementById('cntUrgent').textContent=waitOrder.filter(isUrgent).length;
   // Filter by current tab
-  const shown=all.filter(i=>(i.status||'รอสั่ง')===statusFilter);
+  const shown=all.filter(i=>inTab(i));
   updateLabels();
   const body=document.getElementById('orderBody');
   if(!shown.length){
-    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':'ยังไม่มีรายการรอของ';
+    const msg=statusFilter==='รอสั่ง'?'ยังไม่มีรายการรอสั่ง':statusFilter==='ด่วน'?'ไม่มีรายการด่วน':'ยังไม่มีรายการรอของ';
     body.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:8px">💊</div><div style="font-size:12px">'+msg+'</div></div>';
     document.getElementById('totBadge').textContent=shown.length;
     document.getElementById('totItems').textContent=shown.length;
@@ -1593,8 +1619,10 @@ function renderOrder(){
   const grouped={};
   shown.forEach(it=>{if(!grouped[it.supplier])grouped[it.supplier]=[];grouped[it.supplier].push(it);});
   // Pin items/suppliers carrying an owner note to the top so they stand out
-  Object.keys(grouped).forEach(s=>grouped[s].sort((x,y)=>(y.ownerNote?1:0)-(x.ownerNote?1:0)));
-  const supKeys=Object.keys(grouped).sort((a,b)=>(grouped[a].some(i=>i.ownerNote)?0:1)-(grouped[b].some(i=>i.ownerNote)?0:1));
+  // (urgent items next, then the rest)
+  const rank=i=>(i.ownerNote?2:0)+(isUrgent(i)?1:0);
+  Object.keys(grouped).forEach(s=>grouped[s].sort((x,y)=>rank(y)-rank(x)));
+  const supKeys=Object.keys(grouped).sort((a,b)=>Math.max(...grouped[b].map(rank))-Math.max(...grouped[a].map(rank)));
   const sc=Object.keys(grouped).length;
   const isWaitGoods=statusFilter==='รอของ';
   let html=`<div class="sBar"><span>📦 <b>${sc}</b> บริษัท</span><span>💊 <b>${shown.length}</b> รายการ</span>`;
@@ -1642,7 +1670,7 @@ function renderOrder(){
       }
       html+=`<div class="iRow${it.ownerNote?' hasOwnerNote':''}" data-code="${esc(it.code)}" data-branch="${esc(vb)}" data-rowid="${esc(it.rowId||'')}" onclick="handleRowClick(this)">
         <div>
-          <div class="iName">${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''} <span class="copyIcon" data-name="${esc(it.name)}" onclick="event.stopPropagation();copyName(this)" title="คัดลอกชื่อ">📋</span></div>
+          <div class="iName">${isUrgent(it)&&(it.status||'รอสั่ง')==='รอสั่ง'?'<span class="urgBadge">⚡ ด่วน</span> ':''}${esc(it.name)} ${it.custom?'<span class="iBadge">เพิ่มเอง</span>':''} <span class="copyIcon" data-name="${esc(it.name)}" onclick="event.stopPropagation();copyName(this)" title="คัดลอกชื่อ">📋</span></div>
           ${it.ownerNote?`<div class="ownerNoteRow">👑 ${esc(it.ownerNote)}</div>`:''}
           <div class="iMeta">${it.custom?'':esc(it.code)} | ${esc(it.unit)}</div>
           ${it.note?`<span class="iNote">📝 ${esc(it.note)}</span>`:''}
@@ -1812,7 +1840,7 @@ function openPrint(){
   const date=document.getElementById('orderDate').value;
   let html='',any=false;
   branches.forEach(bname=>{
-    const items=(orders[bname]||[]).filter(i=>(i.status||'รอสั่ง')===statusFilter);
+    const items=(orders[bname]||[]).filter(i=>inTab(i));
     if(!items.length)return;
     any=true;
     const grouped={};
