@@ -98,6 +98,15 @@ but not "ไม่ด่วน". The extra status tab `ด่วน` shows urgen
 Urgent rows get a red badge, sort right after owner-note rows, and the owner's
 branch tabs show `⚡n`.
 
+**Customer appointment (📅 นัดลูกค้า)** – a second tick (`nApptChk` / `cApptChk`)
+opens optional fields (customer name, phone, approximate or exact day + time;
+`apptBoxHtml`, `toggleAppt`, `resetAppt`). `buildNote(prefix, note, urgent)`
+writes the note as `📅นัดลูกค้า · name · โทร phone · นัด <day> · staff note`
+(relative days are turned into a date, e.g. "พรุ่งนี้ (จ 2 พ.ย.)"). `isAppt(i)` =
+note contains "นัดลูกค้า"; an appointment always counts as urgent (`isUrgent`).
+Tab `นัดลูกค้า` (blue) = appointment รอสั่ง items, count `cntAppt`; rows get a
+blue badge/note and owner branch tabs show `📅n`.
+
 `REORDER_DAYS = 3`: an item already `รอของ` can be re-ordered ("ตามของ")
 only after this many days (`showDupWarning` / `doReorder`). Duplicate adds are
 detected up front (`checkRecentOrder`, `loadRecentOrdered`).
