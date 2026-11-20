@@ -87,6 +87,20 @@ Items that no longer need ordering (bought elsewhere, already handed out) are
 never comes. The owner's supplier "🔀 รวมสาขา" modal (`openSupplierAllBranches`)
 has a ✕ per รอสั่ง row for this (`supAllDelete`, confirm → `sheetDelete`).
 
+**Owner cross-branch search** (owner asked 20 Nov 2026: "ถ้าผมเสิร์ชว่า sos อยากให้
+ทุกอย่างทุกสาขาที่มีจดคำว่า sos ขึ้นมาให้ผมดูทีเดียว"): a search bar `#ownerSearch`
+under the owner branch tabs (shown only when `isOwner`, toggled in `enterApp`).
+`runOwnerSearch` → `openSearchAllBranches(q)` opens the same `histModal` as the
+supplier view, grouped by branch, listing every **รอสั่ง** item whose name / code /
+staff note / supplier / owner note contains `q` (case-insensitive) or whose code
+matches a generic name in `BC.gen` (`searchAcrossBranches`). Rows show the supplier
+and reuse the supplier view's actions (`supAllSetQty`, `supAllUseRec`,
+`supAllCopyItem`, `supAllAskOther`, `supAllMarkOrdered`, `supAllDelete`,
+`supAllEditNote`). Those actions now refresh through `reopenAll(sup)`, which
+re-opens whichever consolidated view is current (`allView` = `{type:'sup'|'q', key}`).
+"📋 Copy รวม" (`copySearchAll`) = one line per product with per-branch qty
+("ส.1 ×2, ส.3 ×1") and the supplier.
+
 The status tab filter is `statusFilter` (`setStatusFilter`), and the left
 card swaps between "add item" (รอสั่ง) and "receive search" (รอของ).
 
