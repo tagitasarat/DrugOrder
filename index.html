@@ -227,6 +227,10 @@ details summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--pri);p
   </header>
   <div id="ownerBanner" class="noPrint">👑 โหมดเจ้าของ — เห็นรายการทุกสาขา</div>
   <div id="oTabsWrap" class="oTabsWrap noPrint"></div>
+  <div id="ownerSearch" class="noPrint" style="display:none;gap:8px;padding:10px 16px 0">
+    <input type="text" id="ownerSearchInput" placeholder="🔎 ค้นหารวมทุกสาขา เช่น sos, ชื่อยา, บริษัท" autocomplete="off" style="flex:1;min-width:0;padding:9px 12px;border:1px solid var(--bdr);border-radius:10px;font:inherit;font-size:14px" onkeydown="if(event.key==='Enter')runOwnerSearch()">
+    <button class="btn btnPri" style="white-space:nowrap;width:auto;flex:none;padding-left:16px;padding-right:16px" onclick="runOwnerSearch()">ค้นหาทุกสาขา</button>
+  </div>
 
   <div class="wrap">
     <div class="layout">
@@ -543,6 +547,7 @@ function enterApp(){
   document.getElementById('ownerBanner').style.display=isOwner?'flex':'none';
   const otw=document.getElementById('oTabsWrap');
   otw.style.display=isOwner?'flex':'none';
+  const osr=document.getElementById('ownerSearch'); if(osr) osr.style.display=isOwner?'flex':'none';
   document.getElementById('logBtn').style.display=isOwner?'inline-flex':'none';
   document.getElementById('hBranch').textContent=isOwner?'👑 เจ้าของ':curBranch;
   if(isOwner){viewBranch=BRANCHES[0];renderOTabs();}
@@ -1248,7 +1253,99 @@ function supplierAcrossBranches(sup){
 // Actionable consolidated view: manage a supplier's รอสั่ง items across every
 // branch on one page — set qty, apply the recommendation, tick ordered per item
 // or per branch — without searching each branch separately.
+// Which consolidated view is open, so the shared supAll* actions refresh the
+// right one: the per-supplier view or the owner's cross-branch search.
+let allView={type:'sup',key:''};
+function reopenAll(sup){
+  if(allView.type==='q') openSearchAllBranches(allView.key);
+  else openSupplierAllBranches(sup);
+}
+// Owner search across every branch's รอสั่ง list (name / code / note / supplier
+// / owner note / generic name), e.g. "sos" → every SOS item every branch wrote
+// down, whichever supplier, on one page with the same order actions.
+function searchAcrossBranches(q){
+  const ql=String(q||'').trim().toLowerCase();
+  const gens=new Set();
+  if(ql&&BC.gen) Object.entries(BC.gen).forEach(([g,cs])=>{if(String(g).toLowerCase().includes(ql)) cs.forEach(c=>gens.add(c));});
+  const out=[];
+  if(!ql) return out;
+  BRANCHES.forEach(b=>{
+    const its=(orders[b]||[]).filter(i=>(i.status||'รอสั่ง')==='รอสั่ง'&&(
+      [i.name,i.code,i.note,i.supplier,i.ownerNote].join(' ').toLowerCase().includes(ql)||gens.has(i.code)));
+    if(its.length) out.push([b,its]);
+  });
+  return out;
+}
+function runOwnerSearch(){
+  const inp=document.getElementById('ownerSearchInput');
+  const q=inp?inp.value.trim():'';
+  if(!q){toast('พิมพ์คำที่จะค้นหาก่อน เช่น sos');return;}
+  openSearchAllBranches(q);
+}
+function openSearchAllBranches(q){
+  allView={type:'q',key:q};
+  const groups=searchAcrossBranches(q);
+  const total=groups.reduce((s,g)=>s+g[1].length,0);
+  let body;
+  if(!groups.length){
+    body=`<div style="font-size:13px;color:var(--mut);padding:16px 0;text-align:center">ไม่มีรายการรอสั่งที่มีคำว่า "${esc(q)}" ในสาขาไหนเลย</div>`;
+  }else{
+    body=`<div style="font-size:12px;color:var(--mut);margin-bottom:8px">รายการรอสั่งที่มีคำว่า "${esc(q)}" จากทุกสาขา (${groups.length} สาขา · ${total} รายการ) · แตะชื่อเพื่อพิมพ์โน้ตเจ้าของ</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btnOut" style="flex:1" onclick="copySearchAll('${ea(q)}')">📋 Copy รวม</button>
+      </div>`;
+    groups.forEach(g=>{
+      const b=g[0], its=g[1], bKey=b.replace('สาขา ','');
+      body+=`<div style="margin-bottom:12px">
+        <div style="border-bottom:1px solid var(--bdr);padding-bottom:3px;margin-bottom:5px">
+          <span style="font-weight:700;font-size:13px;color:var(--pri)">📍 ${esc(b)} <span style="color:var(--mut);font-weight:400">(${its.length})</span></span>
+        </div>`;
+      its.forEach(it=>{
+        const sup=it.supplier||'';
+        const rec=recIn(it.code,bKey,it.unit);
+        const qtyVal=it.qty!=null?it.qty:'';
+        body+=`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #f5f7fa">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;cursor:pointer" title="คลิกเพื่อพิมพ์โน้ตเจ้าของ" onclick="supAllEditNote('${ea(b)}','${ea(it.code)}','${ea(sup)}')">${esc(it.name)} <span style="font-size:10px;color:var(--mut)">✏️</span></div>
+            <div style="font-size:10px;color:var(--mut)">🏢 ${esc(sup||'ไม่ระบุบริษัท')} · ${it.custom?'':esc(it.code)+' · '}${esc(it.unit)}${it.note?' · 📝'+esc(it.note):''}</div>
+            ${it.ownerNote?`<div class="ownerNoteRow">👑 ${esc(it.ownerNote)}</div>`:''}
+          </div>
+          <input class="qtyInput" type="number" min="1" placeholder="จำนวน" value="${qtyVal}" style="width:62px" onchange="supAllSetQty('${ea(b)}','${ea(it.code)}',this.value)">
+          ${rec?`<button class="recBadge" onclick="supAllUseRec('${ea(b)}','${ea(it.code)}',${rec},'${ea(sup)}')">แนะนำ ${rec}</button>`:''}
+          <button class="btnSm btnCopy" title="คัดลอกรายการนี้" onclick="supAllCopyItem('${ea(b)}','${ea(it.code)}')">📋</button>
+          <button class="btnSm" style="background:${it.ownerNote===ASK_NOTE?'#7c3aed':'#ede9fe'};color:${it.ownerNote===ASK_NOTE?'#fff':'#7c3aed'};border:1px solid #c4b5fd;white-space:nowrap" title="บอกสาขาให้ไปขอของจากสาขาอื่นแทน" onclick="supAllAskOther('${ea(b)}','${ea(it.code)}','${ea(sup)}')">🔁 ขอสาขาอื่น</button>
+          <button class="btnSm btnOrd" title="สั่งแล้ว" onclick="supAllMarkOrdered('${ea(b)}','${ea(it.code)}','${ea(sup)}')">✅</button>
+          <button class="btnSm btnDel" title="ลบรายการ (ไม่ต้องสั่งแล้ว)" onclick="supAllDelete('${ea(b)}','${ea(it.code)}','${ea(sup)}')">✕</button>
+        </div>`;
+      });
+      body+=`</div>`;
+    });
+  }
+  document.getElementById('histTitle').textContent='🔎 "'+q+'" — รวมทุกสาขา';
+  document.getElementById('histBody').innerHTML=body;
+  document.getElementById('histModal').classList.add('open');
+}
+// Copy the search result as one line per product with quantities per branch,
+// e.g. "1. SOS ... — ส.1 ×2, ส.3 ×1".
+function copySearchAll(q){
+  const groups=searchAcrossBranches(q);
+  if(!groups.length){toast('ไม่มีรายการ');return;}
+  const date=document.getElementById('orderDate').value;
+  const agg={}, keys=[];
+  groups.forEach(g=>{
+    const short='ส.'+g[0].replace('สาขา ','');
+    g[1].forEach(it=>{
+      const k=it.custom?('n:'+it.name):('c:'+it.code);
+      if(!agg[k]){agg[k]={name:it.name,sup:it.supplier||'',parts:[]};keys.push(k);}
+      agg[k].parts.push(short+(it.qty?' ×'+it.qty:''));
+    });
+  });
+  const lines=['ค้นหา: '+q,'วันที่: '+date,'---'];
+  keys.forEach((k,i)=>{const a=agg[k];lines.push((i+1)+'. '+a.name+' — '+a.parts.join(', ')+(a.sup?' ('+a.sup+')':''));});
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copy รวมแล้ว ('+keys.length+' รายการ)'));
+}
 function openSupplierAllBranches(sup){
+  allView={type:'sup',key:sup};
   const groups=supplierAcrossBranches(sup);
   if(!groups.length){closeModal('histModal');toast('ไม่มีรายการแล้ว');return;}
   const total=groups.reduce((s,g)=>s+g[1].length,0);
@@ -1304,7 +1401,7 @@ function supAllUseRec(branch,code,rec,sup){
   item.qty=rec;
   if(item.rowId) sheetQty(branch,item.rowId,rec);
   renderOrder();
-  openSupplierAllBranches(sup);
+  reopenAll(sup);
 }
 function supAllMarkOrdered(branch,code,sup){
   const item=(orders[branch]||[]).find(i=>i.code===code&&(i.status||'รอสั่ง')==='รอสั่ง');if(!item)return;
@@ -1314,7 +1411,7 @@ function supAllMarkOrdered(branch,code,sup){
   if(isOwner)renderOTabs();
   renderOrder();
   toast('📦 สั่งแล้ว: '+item.name+' ('+branch+')');
-  openSupplierAllBranches(sup);
+  reopenAll(sup);
 }
 // ✕ in the consolidated view: drop a รอสั่ง item that no longer needs ordering
 // (bought elsewhere / already handed out). Ticking ✅ instead would park it in
@@ -1327,11 +1424,11 @@ function supAllDelete(branch,code,sup){
   if(isOwner)renderOTabs();
   renderOrder();
   toast('🗑 ลบแล้ว: '+item.name+' ('+branch+')');
-  openSupplierAllBranches(sup);
+  reopenAll(sup);
 }
 function supAllMarkBranch(branch,sup){
   markAllOrdered(branch,sup);
-  openSupplierAllBranches(sup);
+  reopenAll(sup);
 }
 function copySupplierAll(sup){
   const groups=supplierAcrossBranches(sup);
@@ -1394,7 +1491,7 @@ function supAllAskOther(branch,code,sup){
   const item=(orders[branch]||[]).find(i=>i.code===code);if(!item)return;
   toggleAskOther(item,branch);
   renderOrder();
-  openSupplierAllBranches(sup);
+  reopenAll(sup);
 }
 // Free-text owner-note editor opened by clicking a product name in the
 // รวมสาขา modal; saving returns to the same modal.
@@ -1406,7 +1503,7 @@ function supAllEditNote(branch,code,sup){
       <textarea id="supAllNoteTa" class="ownerNoteTa" placeholder="เช่น ของขาด ยังไม่ได้สั่ง / ไปขอสาขาอื่นแทน">${esc(item.ownerNote||'')}</textarea>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btnOut" style="flex:1" onclick="openSupplierAllBranches('${ea(sup)}')">⬅ กลับ</button>
+      <button class="btn btnOut" style="flex:1" onclick="reopenAll('${ea(sup)}')">⬅ กลับ</button>
       <button class="btn btnPri" style="flex:1" onclick="supAllSaveNote('${ea(branch)}','${ea(code)}','${ea(sup)}')">💾 บันทึกโน้ต</button>
     </div>`;
   document.getElementById('histTitle').textContent='👑 โน้ตเจ้าของ';
@@ -1422,7 +1519,7 @@ function supAllSaveNote(branch,code,sup){
   if(isOwner)renderOTabs();
   renderOrder();
   toast(txt?'👑 บันทึกโน้ตเจ้าของแล้ว':'ลบโน้ตแล้ว');
-  openSupplierAllBranches(sup);
+  reopenAll(sup);
 }
 function exportSupplierAll(sup){
   const groups=supplierAcrossBranches(sup);
