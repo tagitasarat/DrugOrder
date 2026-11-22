@@ -473,7 +473,8 @@ function buildNote(p,note,urgent){
   return parts.join(' · ');
 }
 let isLoading=false; // true while initial Sheets load in progress (locks add input)
-const REORDER_DAYS=3; // days before ตามของ allowed
+const REORDER_DAYS=3; // only for the "old" style of the จดเมื่อ badge (ตามของ uses FOLLOWUP_DAYS)
+const FOLLOWUP_DAYS=7; // calendar days after ordering before ตามของ is allowed
 function setAddLock(lock){
   // Disable/enable the add-item search + buttons while data loads (prevents dup race)
   const ids=['si','noteInput','cName','cSup','cUnit','cNote'];
@@ -884,6 +885,20 @@ function nowStamp(){
   const d=new Date(), p=n=>String(n).padStart(2,'0');
   return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());
 }
+// ตามของ rule: calendar days in device local time. Ordered on day D (any time)
+// -> allowed from local midnight of D+FOLLOWUP_DAYS. Missing/unparseable date
+// -> known:false, canFollow:true (never trap the user).
+function followUpInfo(orderedAt, now){
+  const d=orderedAt?parseThaiDate(orderedAt):null;
+  if(!d) return {known:false,canFollow:true,daysSince:null,availableFrom:null,availableTxt:''};
+  now=now||new Date();
+  const p=n=>String(n).padStart(2,'0');
+  const od=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const td=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const from=new Date(od.getFullYear(),od.getMonth(),od.getDate()+FOLLOWUP_DAYS);
+  return {known:true,canFollow:now>=from,daysSince:Math.round((td-od)/86400000),
+    availableFrom:from,availableTxt:p(from.getDate())+'/'+p(from.getMonth()+1)};
+}
 function checkRecentOrder(code, branch){
   const now = new Date();
   const sevenDaysAgo = new Date(now - 7*24*60*60*1000);
@@ -906,19 +921,10 @@ function showDupWarning(drug, note, branch, existing){
   // Treat anything that isn't exactly รอสั่ง as already-ordered (รอของ),
   // so legacy/odd status values don't slip past the รอของ handling below.
   const status=(existing.status&&existing.status!=='รอสั่ง')?'รอของ':'รอสั่ง';
-  let canReorder=false;
-  let daysSince=null;
-  if(status==='รอของ'){
-    const d=existing.orderedAt?parseThaiDate(existing.orderedAt):null;
-    if(d){
-      daysSince=Math.floor((new Date()-d)/(24*60*60*1000));
-      canReorder=daysSince>=REORDER_DAYS;
-    } else {
-      // Can't tell when it was ordered (missing/odd date) — don't trap the
-      // user; allow re-ordering rather than blocking forever.
-      canReorder=true;
-    }
-  }
+  // รอของ: ตามของ only allowed FOLLOWUP_DAYS calendar days after ordering
+  // (followUpInfo); a missing/odd date allows it so the user is never trapped.
+  const fu=status==='รอของ'?followUpInfo(existing.orderedAt,new Date()):null;
+  const daysSince=fu?fu.daysSince:null;
   document.getElementById('histTitle').textContent='⚠️ ยานี้มีในรายการอยู่แล้ว';
   let body=`<div class="warnBox">
     <div class="warnTitle">⚠️ ${esc(drug.n)}</div>`;
@@ -927,19 +933,25 @@ function showDupWarning(drug, note, branch, existing){
   } else {
     const sinceTxt=daysSince==null?'':`<b>${daysSince} วันก่อน</b> `;
     body+=`<div style="font-size:12px;color:#856404;margin-bottom:6px">${esc(branch)} สั่งยานี้ไปแล้ว ${sinceTxt}(${esc(existing.orderedAt||'ไม่ทราบวันที่')}) สถานะ <b>รอของ</b></div>`;
-    if(daysSince!=null && daysSince<REORDER_DAYS){
-      body+=`<div style="font-size:11px;color:var(--mut)">⏳ เพิ่งสั่งไปไม่นาน — ถ้าของยังไม่มาจริง กดตามของเพื่อสั่งซ้ำได้</div>`;
+    if(!fu.canFollow){
+      body+=`<div style="font-size:11px;color:var(--mut)">เพิ่งสั่งไป ${esc(daysSince)} วัน — ตามของได้เมื่อครบ ${FOLLOWUP_DAYS} วัน (ตั้งแต่วันที่ ${esc(fu.availableTxt)}) ถ้าของยังไม่มา</div>`;
     } else {
-      body+=`<div style="font-size:12px;color:#856404">ของยังไม่มา — กดตามของเพื่อให้เจ้าของสั่งซ้ำได้</div>`;
+      const sTxt=daysSince==null?'':` (สั่งไป ${esc(daysSince)} วันแล้ว)`;
+      body+=`<div style="font-size:12px;color:#856404">ของยังไม่มา${sTxt} — กดตามของเพื่อให้เจ้าของสั่งซ้ำได้</div>`;
     }
   }
   body+='</div>';
   body+=`<div style="display:flex;gap:8px;margin-top:4px">
     <button class="btn btnOut" style="flex:1" onclick="closeModal('histModal')">ปิด</button>`;
-  // Always offer reorder for รอของ items so a missing/odd order date can never
-  // trap the user; the message above just advises if it was ordered very recently.
+  // รอของ: active ตามของ button only once FOLLOWUP_DAYS calendar days have
+  // passed (or the order date is unknown); before that a disabled button shows
+  // the date it unlocks. Same rule for owner and staff; doReorder re-checks.
   if(status==='รอของ'){
-    body+=`<button class="btn btnWarn" style="flex:1" onclick="doReorder('${esc(existing.code)}','${esc(branch)}')">⏰ ตามของ / สั่งซ้ำ</button>`;
+    if(fu.canFollow){
+      body+=`<button class="btn btnWarn" style="flex:1" onclick="doReorder('${esc(existing.code)}','${esc(branch)}')">⏰ ตามของ / สั่งซ้ำ</button>`;
+    } else {
+      body+=`<button class="btn btnOut" style="flex:1" disabled>⏳ ตามได้วันที่ ${esc(fu.availableTxt)}</button>`;
+    }
   }
   body+='</div>';
   document.getElementById('histBody').innerHTML=body;
@@ -949,6 +961,10 @@ function showDupWarning(drug, note, branch, existing){
 function doReorder(code, branch){
   const item=orders[branch].find(i=>i.code===code);
   if(!item)return;
+  if(item.status!=='รอสั่ง'){
+    const fu=followUpInfo(item.orderedAt,new Date());
+    if(!fu.canFollow){toast('⏳ ตามของได้ตั้งแต่วันที่ '+fu.availableTxt);return;}
+  }
   item.status='รอสั่ง';
   item.orderedAt=null;
   if(!String(item.note||'').includes('ตามของ')){

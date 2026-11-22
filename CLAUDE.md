@@ -121,9 +121,18 @@ note contains "นัดลูกค้า"; an appointment always counts as urg
 Tab `นัดลูกค้า` (blue) = appointment รอสั่ง items, count `cntAppt`; rows get a
 blue badge/note and owner branch tabs show `📅n`.
 
-`REORDER_DAYS = 3`: an item already `รอของ` can be re-ordered ("ตามของ")
-only after this many days (`showDupWarning` / `doReorder`). Duplicate adds are
-detected up front (`checkRecentOrder`, `loadRecentOrdered`).
+`FOLLOWUP_DAYS = 7`: an item already `รอของ` can be re-ordered ("ตามของ")
+only 7 **calendar days** after it was ordered (`followUpInfo(orderedAt, now)`,
+device local time = Thailand): ordered on day D at any time → allowed from local
+midnight of D+7 (ordered 15/11 → from 22/11 00:00). Until then `showDupWarning`
+renders a **disabled** button "⏳ ตามได้วันที่ DD/MM" (no onclick) with an
+explanatory message; afterwards the active "⏰ ตามของ / สั่งซ้ำ" button. Same
+rule for owner and staff (no bypass). `doReorder` re-checks the rule at the top
+and, if still too early, toasts "⏳ ตามของได้ตั้งแต่วันที่ DD/MM" and changes
+nothing. Fallback: a missing/unparseable `orderedAt` → `known:false,
+canFollow:true` so the user is never trapped. `REORDER_DAYS = 3` is now only
+used for the "old" style of the `addedBadge`. Duplicate adds are detected up
+front (`checkRecentOrder`, `loadRecentOrdered`).
 
 ### Data tables (in `data.js`)
 - `CAT` — drug catalog (~4,660 entries), keyed by code `"P-XXXX"`:
